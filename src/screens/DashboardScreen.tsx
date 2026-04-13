@@ -19,9 +19,10 @@ import { CategoryIcon } from '../components/CategoryIcon';
 import { useExpenseStore } from '../store/useExpenseStore';
 import { useNotificationStore } from '../store/useNotificationStore';
 import { COLORS, SPACING, FONT_SIZE, BORDER_RADIUS, SHADOWS } from '../constants/theme';
+import { useTheme } from '../contexts/ThemeContext';
 import { CATEGORY_COLORS, ExpenseCategory, INCOME_SOURCE_COLORS, INCOME_SOURCE_ICONS, IncomeSource } from '../types';
 import { formatCurrency, formatCurrencyWithCode, CURRENCY_OPTIONS, getCurrencySymbol } from '../utils/currency';
-import { exportCsv } from '../utils/exportData';
+import { exportCsv, exportBackup, pickAndReadBackupFile } from '../utils/exportData';
 
 type ViewMode = 'monthly' | 'overall';
 
@@ -47,6 +48,7 @@ const formatDate = (dateStr: string) => {
 
 export const DashboardScreen: React.FC = () => {
   const navigation = useNavigation<any>();
+  const { colors, isDark } = useTheme();
   const [viewMode, setViewMode] = useState<ViewMode>('monthly');
   const [editingIncome, setEditingIncome] = useState(false);
   const [incomeInput, setIncomeInput] = useState('');
@@ -55,6 +57,10 @@ export const DashboardScreen: React.FC = () => {
   const [exchangeRateOpen, setExchangeRateOpen] = useState(false);
   const [newRateCurrency, setNewRateCurrency] = useState('');
   const [newRateValue, setNewRateValue] = useState('');
+  const [backupMenuOpen, setBackupMenuOpen] = useState(false);
+  const [restoreConfirmOpen, setRestoreConfirmOpen] = useState(false);
+  const [pendingRestore, setPendingRestore] = useState<any>(null);
+  const [restoreMessage, setRestoreMessage] = useState('');
 
   const {
     monthlyIncome,
@@ -84,6 +90,10 @@ export const DashboardScreen: React.FC = () => {
     exchangeRates,
     addExchangeRate,
     deleteExchangeRate,
+    getBackupState,
+    restoreFromBackup,
+    categoryBudgets,
+    getCategoryBudgetStatus,
   } = useExpenseStore();
 
   const { getUnreadCount, generateSmartNotifications } = useNotificationStore();
@@ -108,6 +118,11 @@ export const DashboardScreen: React.FC = () => {
   const totalIncomeThisMonth = monthlyIncome + fixedIncomeTotal + extraIncome;
   const spendingPercentage = totalIncomeThisMonth > 0 ? totalSpentThisMonth / totalIncomeThisMonth : 0;
 
+  const categoryBudgetStatuses = getCategoryBudgetStatus(currentMonth);
+  const categoryBudgetMap = new Map(
+    categoryBudgetStatuses.filter((s) => s.enabled).map((s) => [s.category, s])
+  );
+
   // Smart notifications
   useEffect(() => {
     generateSmartNotifications({
@@ -125,8 +140,11 @@ export const DashboardScreen: React.FC = () => {
         description: f.description,
         amount: f.amount,
       })),
+      categoryBudgets: categoryBudgetStatuses
+        .filter((s) => s.enabled)
+        .map((s) => ({ category: s.category, limit: s.limit, spent: s.spent, percentage: s.percentage })),
     });
-  }, [monthlyTotal, fixedTotal, budgets.length, expenses.length, incomes.length]);
+  }, [monthlyTotal, fixedTotal, budgets.length, expenses.length, incomes.length, categoryBudgets.length]);
 
   // Animations
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -184,7 +202,7 @@ export const DashboardScreen: React.FC = () => {
       : ['#00D68F', '#45B7D1', '#6C63FF'];
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
@@ -200,9 +218,9 @@ export const DashboardScreen: React.FC = () => {
           <View style={styles.headerActions}>
           <TouchableOpacity
             style={styles.headerBtn}
-            onPress={() => exportCsv({ expenses, incomes, fixedExpenses, fixedIncomes })}
+            onPress={() => setBackupMenuOpen(true)}
           >
-            <MaterialIcons name="file-download" size={22} color={COLORS.textSecondary} />
+            <MaterialIcons name="save-alt" size={22} color={COLORS.textSecondary} />
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.headerBtn}
@@ -232,6 +250,12 @@ export const DashboardScreen: React.FC = () => {
                 </Text>
               </View>
             )}
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.headerBtn}
+            onPress={() => navigation.navigate('Settings' as never)}
+          >
+            <MaterialIcons name="settings" size={22} color={COLORS.textSecondary} />
           </TouchableOpacity>
           </View>
         </Animated.View>
@@ -477,22 +501,44 @@ export const DashboardScreen: React.FC = () => {
             ) : (
               sortedCategories.map(([category, amount]) => {
                 const maxAmount = sortedCategories[0][1];
-                const percentage = amount / maxAmount;
                 const customCat = customCategories.find((c) => c.name === category);
                 const color = customCat?.color || CATEGORY_COLORS[category as ExpenseCategory] || '#AEB6BF';
+                const catBudget = categoryBudgetMap.get(category);
+                const barPercentage = catBudget
+                  ? Math.min(amount / catBudget.limit, 1)
+                  : amount / maxAmount;
+                const barColor = catBudget
+                  ? catBudget.percentage >= 1
+                    ? COLORS.danger
+                    : catBudget.percentage >= 0.8
+                    ? COLORS.warning
+                    : color
+                  : color;
                 return (
                   <View key={category} style={styles.categoryRow}>
                     <CategoryIcon category={category} size={36} />
                     <View style={styles.categoryInfo}>
                       <View style={styles.categoryHeader}>
                         <Text style={styles.categoryName}>{category}</Text>
-                        <Text style={styles.categoryAmount}>{formatCurrency(amount)}</Text>
+                        <View style={styles.categoryAmountRow}>
+                          <Text style={styles.categoryAmount}>{formatCurrency(amount)}</Text>
+                          {catBudget && catBudget.percentage >= 1 && (
+                            <View style={styles.overBadge}>
+                              <Text style={styles.overBadgeText}>OVER</Text>
+                            </View>
+                          )}
+                        </View>
                       </View>
+                      {catBudget && (
+                        <Text style={styles.categoryLimitText}>
+                          of {formatCurrency(catBudget.limit)}
+                        </Text>
+                      )}
                       <View style={styles.categoryBar}>
                         <View
                           style={[
                             styles.categoryBarFill,
-                            { width: `${percentage * 100}%`, backgroundColor: color },
+                            { width: `${barPercentage * 100}%`, backgroundColor: barColor },
                           ]}
                         />
                       </View>
@@ -829,6 +875,154 @@ export const DashboardScreen: React.FC = () => {
           </View>
         </TouchableOpacity>
       </Modal>
+
+      {/* Backup / Restore Menu */}
+      <Modal
+        visible={backupMenuOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setBackupMenuOpen(false)}
+      >
+        <TouchableOpacity
+          style={styles.backupOverlay}
+          activeOpacity={1}
+          onPress={() => setBackupMenuOpen(false)}
+        >
+          <View style={styles.backupModal} onStartShouldSetResponder={() => true}>
+            <Text style={styles.backupTitle}>Backup & Export</Text>
+
+            <TouchableOpacity
+              style={styles.backupOption}
+              onPress={async () => {
+                setBackupMenuOpen(false);
+                await exportBackup(getBackupState());
+              }}
+            >
+              <View style={[styles.backupOptionIcon, { backgroundColor: 'rgba(0, 214, 143, 0.12)' }]}>
+                <MaterialIcons name="backup" size={22} color={COLORS.success} />
+              </View>
+              <View style={styles.backupOptionInfo}>
+                <Text style={styles.backupOptionTitle}>Backup (JSON)</Text>
+                <Text style={styles.backupOptionDesc}>Full backup of all data. Use to restore later.</Text>
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.backupOption}
+              onPress={async () => {
+                setBackupMenuOpen(false);
+                const result = await pickAndReadBackupFile();
+                if (!result.valid) {
+                  setRestoreMessage(result.error);
+                  setRestoreConfirmOpen(true);
+                  return;
+                }
+                setPendingRestore(result.data);
+                const count = result.data.expenses?.length || 0;
+                const date = result.data._meta?.exportedAt
+                  ? new Date(result.data._meta.exportedAt).toLocaleDateString()
+                  : 'unknown date';
+                setRestoreMessage(
+                  `Restore backup from ${date}?\n\n` +
+                  `${count} expenses, ${result.data.budgets?.length || 0} budgets, ` +
+                  `${result.data.savingsGoals?.length || 0} goals.\n\n` +
+                  `This will replace ALL current data.`
+                );
+                setRestoreConfirmOpen(true);
+              }}
+            >
+              <View style={[styles.backupOptionIcon, { backgroundColor: 'rgba(108, 99, 255, 0.12)' }]}>
+                <MaterialIcons name="restore" size={22} color={COLORS.primary} />
+              </View>
+              <View style={styles.backupOptionInfo}>
+                <Text style={styles.backupOptionTitle}>Restore from Backup</Text>
+                <Text style={styles.backupOptionDesc}>Import a JSON backup file.</Text>
+              </View>
+            </TouchableOpacity>
+
+            <View style={styles.backupDivider} />
+
+            <TouchableOpacity
+              style={styles.backupOption}
+              onPress={() => {
+                setBackupMenuOpen(false);
+                exportCsv({ expenses, incomes, fixedExpenses, fixedIncomes });
+              }}
+            >
+              <View style={[styles.backupOptionIcon, { backgroundColor: 'rgba(255, 170, 0, 0.12)' }]}>
+                <MaterialIcons name="table-chart" size={22} color={COLORS.warning} />
+              </View>
+              <View style={styles.backupOptionInfo}>
+                <Text style={styles.backupOptionTitle}>Export CSV</Text>
+                <Text style={styles.backupOptionDesc}>Spreadsheet-friendly format (read-only).</Text>
+              </View>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* Restore Confirmation */}
+      <Modal
+        visible={restoreConfirmOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => {
+          setRestoreConfirmOpen(false);
+          setPendingRestore(null);
+        }}
+      >
+        <TouchableOpacity
+          style={styles.backupOverlay}
+          activeOpacity={1}
+          onPress={() => {
+            setRestoreConfirmOpen(false);
+            setPendingRestore(null);
+          }}
+        >
+          <View style={styles.restoreModal} onStartShouldSetResponder={() => true}>
+            <MaterialIcons
+              name={pendingRestore ? 'restore' : 'error-outline'}
+              size={36}
+              color={pendingRestore ? COLORS.primary : COLORS.danger}
+            />
+            <Text style={styles.restoreTitle}>
+              {pendingRestore ? 'Restore Data?' : 'Error'}
+            </Text>
+            <Text style={styles.restoreMessage}>{restoreMessage}</Text>
+
+            <View style={styles.restoreActions}>
+              <TouchableOpacity
+                style={styles.restoreCancelBtn}
+                onPress={() => {
+                  setRestoreConfirmOpen(false);
+                  setPendingRestore(null);
+                }}
+              >
+                <Text style={styles.restoreCancelText}>
+                  {pendingRestore ? 'Cancel' : 'OK'}
+                </Text>
+              </TouchableOpacity>
+              {pendingRestore && (
+                <TouchableOpacity
+                  style={styles.restoreConfirmBtn}
+                  onPress={() => {
+                    restoreFromBackup(pendingRestore);
+                    setRestoreConfirmOpen(false);
+                    setPendingRestore(null);
+                  }}
+                >
+                  <LinearGradient
+                    colors={['#6C63FF', '#9B59B6']}
+                    style={styles.restoreConfirmGradient}
+                  >
+                    <Text style={styles.restoreConfirmText}>Restore</Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </View>
   );
 };
@@ -1095,6 +1289,29 @@ const styles = StyleSheet.create({
   },
   categoryName: { fontSize: FONT_SIZE.md, color: COLORS.textPrimary, fontWeight: '600' },
   categoryAmount: { fontSize: FONT_SIZE.md, color: COLORS.textSecondary, fontWeight: '600' },
+  categoryAmountRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  categoryLimitText: {
+    fontSize: FONT_SIZE.xs,
+    color: COLORS.textMuted,
+    fontWeight: '500',
+    marginBottom: 4,
+  },
+  overBadge: {
+    backgroundColor: 'rgba(255, 61, 113, 0.15)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: BORDER_RADIUS.sm,
+  },
+  overBadgeText: {
+    fontSize: 9,
+    color: COLORS.danger,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
   categoryBar: {
     height: 4,
     backgroundColor: 'rgba(255, 255, 255, 0.06)',
@@ -1497,6 +1714,119 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   exchangeRateDoneText: {
+    fontSize: FONT_SIZE.md,
+    color: '#FFF',
+    fontWeight: '700',
+  },
+
+  // Backup / Restore
+  backupOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  backupModal: {
+    backgroundColor: COLORS.backgroundCard,
+    borderRadius: BORDER_RADIUS.xl,
+    padding: SPACING.lg,
+    width: '88%',
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  backupTitle: {
+    fontSize: FONT_SIZE.xl,
+    color: COLORS.textPrimary,
+    fontWeight: '800',
+    marginBottom: SPACING.lg,
+  },
+  backupOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: SPACING.md,
+    gap: SPACING.md,
+  },
+  backupOptionIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  backupOptionInfo: {
+    flex: 1,
+  },
+  backupOptionTitle: {
+    fontSize: FONT_SIZE.md,
+    color: COLORS.textPrimary,
+    fontWeight: '700',
+  },
+  backupOptionDesc: {
+    fontSize: FONT_SIZE.sm,
+    color: COLORS.textMuted,
+    fontWeight: '500',
+    marginTop: 2,
+  },
+  backupDivider: {
+    height: 1,
+    backgroundColor: COLORS.border,
+    marginVertical: SPACING.sm,
+  },
+
+  // Restore Confirmation
+  restoreModal: {
+    backgroundColor: COLORS.backgroundCard,
+    borderRadius: BORDER_RADIUS.xl,
+    padding: SPACING.xl,
+    width: '85%',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  restoreTitle: {
+    fontSize: FONT_SIZE.xl,
+    color: COLORS.textPrimary,
+    fontWeight: '800',
+    marginTop: SPACING.md,
+    marginBottom: SPACING.sm,
+  },
+  restoreMessage: {
+    fontSize: FONT_SIZE.md,
+    color: COLORS.textSecondary,
+    fontWeight: '500',
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: SPACING.xl,
+  },
+  restoreActions: {
+    flexDirection: 'row',
+    gap: SPACING.md,
+    width: '100%',
+  },
+  restoreCancelBtn: {
+    flex: 1,
+    paddingVertical: SPACING.md,
+    borderRadius: BORDER_RADIUS.md,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    alignItems: 'center',
+  },
+  restoreCancelText: {
+    fontSize: FONT_SIZE.md,
+    color: COLORS.textMuted,
+    fontWeight: '600',
+  },
+  restoreConfirmBtn: {
+    flex: 1,
+    borderRadius: BORDER_RADIUS.md,
+    overflow: 'hidden',
+  },
+  restoreConfirmGradient: {
+    paddingVertical: SPACING.md,
+    alignItems: 'center',
+    borderRadius: BORDER_RADIUS.md,
+  },
+  restoreConfirmText: {
     fontSize: FONT_SIZE.md,
     color: '#FFF',
     fontWeight: '700',

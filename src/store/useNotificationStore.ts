@@ -19,6 +19,7 @@ interface NotificationState {
     fixedTotal: number;
     projects: Array<{ id: string; name: string; budget?: number; spent: number; status: string }>;
     fixedExpenses: Array<{ description: string; amount: number }>;
+    categoryBudgets?: Array<{ category: string; limit: number; spent: number; percentage: number }>;
   }) => void;
 }
 
@@ -132,6 +133,29 @@ export const useNotificationStore = create<NotificationState>()(
         );
       }
     });
+
+    // Category budget alerts
+    if (data.categoryBudgets) {
+      data.categoryBudgets.forEach((cb) => {
+        if (cb.limit <= 0) return;
+
+        if (cb.percentage >= 1 && !existingTypes.has(`category_budget_exceeded-${cb.category}`)) {
+          addNotification(
+            'category_budget_exceeded',
+            `${cb.category} Over Limit`,
+            `You've spent ${formatCurrency(cb.spent)} on ${cb.category}, exceeding your ${formatCurrency(cb.limit)} monthly limit by ${formatCurrency(cb.spent - cb.limit)}.`,
+            cb.category
+          );
+        } else if (cb.percentage >= 0.8 && cb.percentage < 1 && !existingTypes.has(`category_budget_warning-${cb.category}`)) {
+          addNotification(
+            'category_budget_warning',
+            `${cb.category} Near Limit`,
+            `${Math.round(cb.percentage * 100)}% of your ${formatCurrency(cb.limit)} ${cb.category} budget used. ${formatCurrency(cb.limit - cb.spent)} remaining.`,
+            cb.category
+          );
+        }
+      });
+    }
 
     // Bill reminders (beginning of month)
     const dayOfMonth = new Date().getDate();

@@ -21,6 +21,7 @@ import {
   BORDER_RADIUS,
   SHADOWS,
 } from '../constants/theme';
+import { useTheme } from '../contexts/ThemeContext';
 import { formatCurrency } from '../utils/currency';
 
 const formatDate = (dateStr: string) => {
@@ -33,6 +34,7 @@ const formatDate = (dateStr: string) => {
 };
 
 export const ProjectDetailScreen: React.FC = () => {
+  const { colors, isDark } = useTheme();
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const budgetId = route.params?.budgetId || route.params?.projectId;
@@ -110,7 +112,7 @@ export const ProjectDetailScreen: React.FC = () => {
   const completedExpenses = expenses.filter((e) => !e.isPending);
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity

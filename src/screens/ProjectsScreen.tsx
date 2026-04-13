@@ -21,10 +21,12 @@ import {
   BORDER_RADIUS,
   SHADOWS,
 } from '../constants/theme';
+import { useTheme } from '../contexts/ThemeContext';
 import { BUDGET_COLORS, Budget, BudgetTemplate } from '../types';
 import { formatCurrency } from '../utils/currency';
 
 export const ProjectsScreen: React.FC = () => {
+  const { colors, isDark } = useTheme();
   const navigation = useNavigation<any>();
   const {
     budgets,
@@ -251,7 +253,7 @@ export const ProjectsScreen: React.FC = () => {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Budgets</Text>

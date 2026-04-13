@@ -1,5 +1,7 @@
 import { Platform, Share } from 'react-native';
-import { Expense, FixedExpense, FixedIncome, Income } from '../types';
+import { File, Paths } from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
+import { Expense, FixedExpense, FixedIncome, Income, Budget, CustomCategory, ExchangeRate, SavingsGoal, BudgetTemplate } from '../types';
 
 function escapeCsv(value: string): string {
   if (value.includes(',') || value.includes('"') || value.includes('\n')) {
@@ -108,5 +110,125 @@ export async function exportCsv(data: {
     return true;
   } catch {
     return false;
+  }
+}
+
+// ── Backup / Restore (JSON) ──────────────────────────────────────────
+
+export interface BackupData {
+  _meta: {
+    app: string;
+    version: number;
+    exportedAt: string;
+  };
+  expenses: Expense[];
+  fixedExpenses: FixedExpense[];
+  incomes: Income[];
+  fixedIncomes: FixedIncome[];
+  budgets: Budget[];
+  customCategories: CustomCategory[];
+  exchangeRates: ExchangeRate[];
+  savingsGoals: SavingsGoal[];
+  budgetTemplates: BudgetTemplate[];
+  initialBalance: number;
+  monthlyIncome: number;
+  currencySymbol: string;
+}
+
+const BACKUP_VERSION = 1;
+
+export function buildBackupJson(state: Omit<BackupData, '_meta'>): string {
+  const backup: BackupData = {
+    _meta: {
+      app: 'WhereDidItGo',
+      version: BACKUP_VERSION,
+      exportedAt: new Date().toISOString(),
+    },
+    ...state,
+  };
+  return JSON.stringify(backup, null, 2);
+}
+
+export function validateBackup(json: string): { valid: true; data: BackupData } | { valid: false; error: string } {
+  let parsed: any;
+  try {
+    parsed = JSON.parse(json);
+  } catch {
+    return { valid: false, error: 'Invalid JSON file.' };
+  }
+
+  if (!parsed._meta || parsed._meta.app !== 'WhereDidItGo') {
+    return { valid: false, error: 'Not a WhereDidItGo backup file.' };
+  }
+
+  if (!Array.isArray(parsed.expenses)) {
+    return { valid: false, error: 'Backup is missing expenses data.' };
+  }
+
+  return { valid: true, data: parsed as BackupData };
+}
+
+export async function exportBackup(state: Omit<BackupData, '_meta'>): Promise<boolean> {
+  const json = buildBackupJson(state);
+  const filename = `WhereDidItGo_Backup_${new Date().toISOString().slice(0, 10)}.json`;
+
+  if (Platform.OS === 'web') {
+    const blob = new Blob([json], { type: 'application/json;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    return true;
+  }
+
+  // Native: write to temp file, then share
+  try {
+    const file = new File(Paths.cache, filename);
+    file.write(json);
+    await Sharing.shareAsync(file.uri, {
+      mimeType: 'application/json',
+      dialogTitle: 'Save Backup',
+      UTI: 'public.json',
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export async function pickAndReadBackupFile(): Promise<{ valid: true; data: BackupData } | { valid: false; error: string }> {
+  if (Platform.OS === 'web') {
+    return new Promise((resolve) => {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = '.json,application/json';
+      input.onchange = async (e: any) => {
+        const file = e.target?.files?.[0];
+        if (!file) {
+          resolve({ valid: false, error: 'No file selected.' });
+          return;
+        }
+        const text = await file.text();
+        resolve(validateBackup(text));
+      };
+      input.click();
+    });
+  }
+
+  // Native: use file picker
+  try {
+    const picked = await File.pickFileAsync(undefined, 'application/json');
+    if (!picked) {
+      return { valid: false, error: 'No file selected.' };
+    }
+    const file = Array.isArray(picked) ? picked[0] : picked;
+    const content = await file.text();
+    return validateBackup(content);
+  } catch {
+    return { valid: false, error: 'Failed to read the file.' };
   }
 }

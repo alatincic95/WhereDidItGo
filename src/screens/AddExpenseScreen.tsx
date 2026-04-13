@@ -25,6 +25,7 @@ import {
   BORDER_RADIUS,
   SHADOWS,
 } from '../constants/theme';
+import { useTheme } from '../contexts/ThemeContext';
 import {
   EXPENSE_CATEGORIES,
   CATEGORY_ICONS,
@@ -36,12 +37,13 @@ import {
 import { getCurrencySymbol } from '../utils/currency';
 
 export const AddExpenseScreen: React.FC = () => {
+  const { colors, isDark } = useTheme();
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const editingExpense: Expense | undefined = route.params?.expense;
   const preselectedProjectId: string | undefined = route.params?.projectId;
 
-  const { addExpense, updateExpense, deleteExpense, budgets, currencySymbol, customCategories, addCustomCategory, exchangeRates } = useExpenseStore();
+  const { addExpense, updateExpense, deleteExpense, budgets, currencySymbol, customCategories, addCustomCategory, exchangeRates, getOrderedCategories } = useExpenseStore();
 
   const [amount, setAmount] = useState(editingExpense?.amount?.toString() || '');
   const [category, setCategory] = useState<string>(editingExpense?.category || '');
@@ -133,7 +135,7 @@ export const AddExpenseScreen: React.FC = () => {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1 }}
@@ -257,10 +259,11 @@ export const AddExpenseScreen: React.FC = () => {
           >
             <Text style={styles.sectionLabel}>Category</Text>
             <View style={styles.categoryGrid}>
-              {EXPENSE_CATEGORIES.map((cat) => {
+              {getOrderedCategories().map((cat) => {
                 const isSelected = category === cat;
-                const color = CATEGORY_COLORS[cat];
-                const icon = CATEGORY_ICONS[cat];
+                const custom = customCategories.find((c) => c.name === cat);
+                const color = custom?.color || CATEGORY_COLORS[cat as ExpenseCategory] || '#AEB6BF';
+                const icon = custom?.icon || CATEGORY_ICONS[cat as ExpenseCategory] || 'more-horiz';
 
                 return (
                   <TouchableOpacity
@@ -299,49 +302,6 @@ export const AddExpenseScreen: React.FC = () => {
                     </Text>
                     {isSelected && (
                       <View style={[styles.selectedDot, { backgroundColor: color }]} />
-                    )}
-                  </TouchableOpacity>
-                );
-              })}
-              {customCategories.map((cc) => {
-                const isSelected = category === cc.name;
-                return (
-                  <TouchableOpacity
-                    key={cc.name}
-                    style={[
-                      styles.categoryItem,
-                      isSelected && {
-                        borderColor: cc.color,
-                        backgroundColor: `${cc.color}15`,
-                      },
-                    ]}
-                    onPress={() => setCategory(cc.name)}
-                    activeOpacity={0.7}
-                  >
-                    <View
-                      style={[
-                        styles.categoryIconWrap,
-                        {
-                          backgroundColor: isSelected ? `${cc.color}25` : 'rgba(255,255,255,0.04)',
-                        },
-                      ]}
-                    >
-                      <MaterialIcons
-                        name={cc.icon as any}
-                        size={22}
-                        color={isSelected ? cc.color : COLORS.textMuted}
-                      />
-                    </View>
-                    <Text
-                      style={[
-                        styles.categoryText,
-                        isSelected && { color: cc.color },
-                      ]}
-                    >
-                      {cc.name}
-                    </Text>
-                    {isSelected && (
-                      <View style={[styles.selectedDot, { backgroundColor: cc.color }]} />
                     )}
                   </TouchableOpacity>
                 );

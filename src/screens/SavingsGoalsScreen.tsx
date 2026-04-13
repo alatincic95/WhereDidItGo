@@ -15,6 +15,7 @@ import { useNavigation } from '@react-navigation/native';
 import { GlassCard } from '../components/GlassCard';
 import { useExpenseStore } from '../store/useExpenseStore';
 import { COLORS, SPACING, FONT_SIZE, BORDER_RADIUS, SHADOWS } from '../constants/theme';
+import { useTheme } from '../contexts/ThemeContext';
 import { BUDGET_COLORS, SavingsGoal } from '../types';
 import { formatCurrency } from '../utils/currency';
 
@@ -26,6 +27,7 @@ const GOAL_ICONS = [
 ];
 
 export const SavingsGoalsScreen: React.FC = () => {
+  const { colors, isDark } = useTheme();
   const navigation = useNavigation<any>();
   const {
     savingsGoals,
@@ -233,7 +235,7 @@ export const SavingsGoalsScreen: React.FC = () => {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>

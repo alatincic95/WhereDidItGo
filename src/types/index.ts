@@ -34,6 +34,8 @@ export type NotificationType =
   | 'budget_exceeded'
   | 'project_budget_warning'
   | 'project_budget_exceeded'
+  | 'category_budget_warning'
+  | 'category_budget_exceeded'
   | 'bill_reminder'
   | 'milestone'
   | 'tip';
@@ -55,6 +57,8 @@ export const NOTIFICATION_TYPE_META: Record<NotificationType, { icon: string; co
   budget_exceeded: { icon: 'error', color: '#FF3D71' },
   project_budget_warning: { icon: 'folder-special', color: '#FFAA00' },
   project_budget_exceeded: { icon: 'folder-off', color: '#FF3D71' },
+  category_budget_warning: { icon: 'pie-chart', color: '#FFAA00' },
+  category_budget_exceeded: { icon: 'pie-chart', color: '#FF3D71' },
   bill_reminder: { icon: 'notifications-active', color: '#45B7D1' },
   milestone: { icon: 'emoji-events', color: '#00D68F' },
   tip: { icon: 'lightbulb', color: '#BB8FCE' },
@@ -128,11 +132,36 @@ export interface CustomCategory {
   color: string;
 }
 
+export interface CategoryBudget {
+  category: string;       // matches ExpenseCategory or CustomCategory.name
+  monthlyLimit: number;   // spending cap in base currency
+  enabled: boolean;       // toggle without deleting
+}
+
+export type RecurringFrequency = 'weekly' | 'biweekly' | 'monthly' | 'quarterly' | 'yearly';
+
+export const FREQUENCY_OPTIONS: { value: RecurringFrequency; label: string; shortLabel: string }[] = [
+  { value: 'weekly', label: 'Weekly', shortLabel: 'Week' },
+  { value: 'biweekly', label: 'Bi-weekly', shortLabel: '2 Wks' },
+  { value: 'monthly', label: 'Monthly', shortLabel: 'Month' },
+  { value: 'quarterly', label: 'Quarterly', shortLabel: 'Qtr' },
+  { value: 'yearly', label: 'Yearly', shortLabel: 'Year' },
+];
+
+export const FREQUENCY_TO_MONTHLY: Record<RecurringFrequency, number> = {
+  weekly: 52 / 12,       // ~4.333
+  biweekly: 26 / 12,     // ~2.167
+  monthly: 1,
+  quarterly: 1 / 3,      // ~0.333
+  yearly: 1 / 12,        // ~0.083
+};
+
 export interface FixedExpense {
   id: string;
   amount: number;
   category: string;
   description: string;
+  frequency?: RecurringFrequency; // defaults to 'monthly' if absent (backward compat)
 }
 
 export interface FixedIncome {
@@ -140,6 +169,7 @@ export interface FixedIncome {
   amount: number;
   source: string;
   description: string;
+  frequency?: RecurringFrequency; // defaults to 'monthly' if absent (backward compat)
 }
 
 export interface SavingsGoal {

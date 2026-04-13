@@ -15,6 +15,7 @@ import { GlassCard } from '../components/GlassCard';
 import { CategoryIcon } from '../components/CategoryIcon';
 import { useExpenseStore } from '../store/useExpenseStore';
 import { COLORS, SPACING, FONT_SIZE, BORDER_RADIUS, SHADOWS } from '../constants/theme';
+import { useTheme } from '../contexts/ThemeContext';
 import { formatCurrency } from '../utils/currency';
 
 type ChartMode = 'expenses' | 'income' | 'both';
@@ -30,6 +31,7 @@ const formatMonth = (m: string) => {
 };
 
 export const TrendsScreen: React.FC = () => {
+  const { colors, isDark } = useTheme();
   const navigation = useNavigation<any>();
   const [chartMode, setChartMode] = useState<ChartMode>('both');
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -83,7 +85,7 @@ export const TrendsScreen: React.FC = () => {
     : 32;
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>

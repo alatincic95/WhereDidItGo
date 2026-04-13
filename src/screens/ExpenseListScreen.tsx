@@ -16,6 +16,7 @@ import { useNavigation } from '@react-navigation/native';
 import { CategoryIcon } from '../components/CategoryIcon';
 import { useExpenseStore } from '../store/useExpenseStore';
 import { COLORS, SPACING, FONT_SIZE, BORDER_RADIUS } from '../constants/theme';
+import { useTheme } from '../contexts/ThemeContext';
 import {
   Expense,
   EXPENSE_CATEGORIES,
@@ -61,8 +62,9 @@ const formatGroupDate = (dateStr: string) => {
 type SortMode = 'date' | 'amount_high' | 'amount_low';
 
 export const ExpenseListScreen: React.FC = () => {
+  const { colors, isDark } = useTheme();
   const navigation = useNavigation<any>();
-  const { expenses, fixedExpenses, getMonthlyExpenses, deleteExpense, getMonthlyTotal, getFixedExpensesTotal, currencySymbol, customCategories } = useExpenseStore();
+  const { expenses, fixedExpenses, getMonthlyExpenses, deleteExpense, getMonthlyTotal, getFixedExpensesTotal, currencySymbol, customCategories, getOrderedCategories } = useExpenseStore();
   const [selectedMonth, setSelectedMonth] = useState<number | null>(new Date().getMonth());
   const [selectedYear] = useState(new Date().getFullYear());
   const [filterOpen, setFilterOpen] = useState(false);
@@ -208,7 +210,7 @@ export const ExpenseListScreen: React.FC = () => {
   );
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Expenses</Text>

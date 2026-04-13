@@ -22,6 +22,7 @@ import {
   BORDER_RADIUS,
   SHADOWS,
 } from '../constants/theme';
+import { useTheme } from '../contexts/ThemeContext';
 import {
   EXPENSE_CATEGORIES,
   CATEGORY_ICONS,
@@ -32,12 +33,16 @@ import {
   INCOME_SOURCES,
   INCOME_SOURCE_ICONS,
   INCOME_SOURCE_COLORS,
+  RecurringFrequency,
+  FREQUENCY_OPTIONS,
+  FREQUENCY_TO_MONTHLY,
 } from '../types';
 import { formatCurrency } from '../utils/currency';
 
 type Tab = 'expenses' | 'income';
 
 export const FixedExpensesScreen: React.FC = () => {
+  const { colors, isDark } = useTheme();
   const {
     fixedExpenses,
     addFixedExpense,
@@ -50,6 +55,7 @@ export const FixedExpensesScreen: React.FC = () => {
     deleteFixedIncome,
     getFixedIncomesTotal,
     customCategories,
+    getOrderedCategories,
   } = useExpenseStore();
 
   const [activeTab, setActiveTab] = useState<Tab>('expenses');
@@ -60,6 +66,7 @@ export const FixedExpensesScreen: React.FC = () => {
   const [category, setCategory] = useState('');
   const [source, setSource] = useState('');
   const [description, setDescription] = useState('');
+  const [frequency, setFrequency] = useState<RecurringFrequency>('monthly');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -81,11 +88,13 @@ export const FixedExpensesScreen: React.FC = () => {
       setAmount(item.amount.toString());
       setCategory(item.category);
       setDescription(item.description);
+      setFrequency(item.frequency || 'monthly');
     } else {
       setEditingExpense(null);
       setAmount('');
       setCategory('');
       setDescription('');
+      setFrequency('monthly');
     }
     setModalVisible(true);
   };
@@ -97,11 +106,13 @@ export const FixedExpensesScreen: React.FC = () => {
       setAmount(item.amount.toString());
       setSource(item.source);
       setDescription(item.description);
+      setFrequency(item.frequency || 'monthly');
     } else {
       setEditingIncome(null);
       setAmount('');
       setSource('');
       setDescription('');
+      setFrequency('monthly');
     }
     setModalVisible(true);
   };
@@ -111,7 +122,7 @@ export const FixedExpensesScreen: React.FC = () => {
 
     if (activeTab === 'expenses' || editingExpense) {
       if (!category) return;
-      const data = { amount: parseFloat(amount), category, description };
+      const data = { amount: parseFloat(amount), category, description, frequency };
       if (editingExpense) {
         updateFixedExpense(editingExpense.id, data);
       } else {
@@ -119,7 +130,7 @@ export const FixedExpensesScreen: React.FC = () => {
       }
     } else {
       if (!source) return;
-      const data = { amount: parseFloat(amount), source, description };
+      const data = { amount: parseFloat(amount), source, description, frequency };
       if (editingIncome) {
         updateFixedIncome(editingIncome.id, data);
       } else {
@@ -132,7 +143,7 @@ export const FixedExpensesScreen: React.FC = () => {
   const isEditingExpenseModal = editingExpense !== null || (activeTab === 'expenses' && editingIncome === null);
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Recurring</Text>
@@ -230,13 +241,17 @@ export const FixedExpensesScreen: React.FC = () => {
                       </View>
                       <View style={styles.listItemTag}>
                         <MaterialIcons name="autorenew" size={10} color={COLORS.textMuted} />
-                        <Text style={styles.listItemTagText}>Monthly</Text>
+                        <Text style={styles.listItemTagText}>
+                          {FREQUENCY_OPTIONS.find((f) => f.value === (item.frequency || 'monthly'))?.label || 'Monthly'}
+                        </Text>
                       </View>
                     </View>
                   </View>
                   <View style={styles.listItemRight}>
                     <Text style={[styles.listItemAmount, { color: COLORS.accent }]}>{formatCurrency(item.amount)}</Text>
-                    <Text style={styles.listItemPer}>/month</Text>
+                    <Text style={styles.listItemPer}>
+                      /{FREQUENCY_OPTIONS.find((f) => f.value === (item.frequency || 'monthly'))?.shortLabel.toLowerCase() || 'month'}
+                    </Text>
                   </View>
                 </TouchableOpacity>
               );
@@ -302,13 +317,17 @@ export const FixedExpensesScreen: React.FC = () => {
                       </View>
                       <View style={styles.listItemTag}>
                         <MaterialIcons name="autorenew" size={10} color={COLORS.textMuted} />
-                        <Text style={styles.listItemTagText}>Monthly</Text>
+                        <Text style={styles.listItemTagText}>
+                          {FREQUENCY_OPTIONS.find((f) => f.value === (item.frequency || 'monthly'))?.label || 'Monthly'}
+                        </Text>
                       </View>
                     </View>
                   </View>
                   <View style={styles.listItemRight}>
                     <Text style={[styles.listItemAmount, { color: COLORS.success }]}>{formatCurrency(item.amount)}</Text>
-                    <Text style={styles.listItemPer}>/month</Text>
+                    <Text style={styles.listItemPer}>
+                      /{FREQUENCY_OPTIONS.find((f) => f.value === (item.frequency || 'monthly'))?.shortLabel.toLowerCase() || 'month'}
+                    </Text>
                   </View>
                 </TouchableOpacity>
               );
@@ -379,14 +398,41 @@ export const FixedExpensesScreen: React.FC = () => {
               placeholderTextColor={COLORS.textMuted}
             />
 
+            {/* Frequency */}
+            <Text style={styles.modalLabel}>Frequency</Text>
+            <View style={styles.frequencyRow}>
+              {FREQUENCY_OPTIONS.map((opt) => {
+                const isSelected = frequency === opt.value;
+                return (
+                  <TouchableOpacity
+                    key={opt.value}
+                    style={[
+                      styles.frequencyChip,
+                      isSelected && styles.frequencyChipActive,
+                    ]}
+                    onPress={() => setFrequency(opt.value)}
+                  >
+                    <Text style={[
+                      styles.frequencyChipText,
+                      isSelected && styles.frequencyChipTextActive,
+                    ]}>
+                      {opt.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
             {isEditingExpenseModal ? (
               <>
                 {/* Category */}
                 <Text style={styles.modalLabel}>Category</Text>
                 <View style={styles.modalChipGrid}>
-                  {EXPENSE_CATEGORIES.map((cat) => {
+                  {getOrderedCategories().map((cat) => {
                     const isSelected = category === cat;
-                    const color = CATEGORY_COLORS[cat];
+                    const custom = customCategories.find((c) => c.name === cat);
+                    const color = custom?.color || CATEGORY_COLORS[cat as ExpenseCategory] || '#AEB6BF';
+                    const icon = custom?.icon || CATEGORY_ICONS[cat as ExpenseCategory] || 'more-horiz';
                     return (
                       <TouchableOpacity
                         key={cat}
@@ -397,34 +443,12 @@ export const FixedExpensesScreen: React.FC = () => {
                         onPress={() => setCategory(cat)}
                       >
                         <MaterialIcons
-                          name={CATEGORY_ICONS[cat] as any}
+                          name={icon as any}
                           size={20}
                           color={isSelected ? color : COLORS.textMuted}
                         />
                         <Text style={[styles.modalChipText, isSelected && { color }]}>
                           {cat}
-                        </Text>
-                      </TouchableOpacity>
-                    );
-                  })}
-                  {customCategories.map((cc) => {
-                    const isSelected = category === cc.name;
-                    return (
-                      <TouchableOpacity
-                        key={cc.name}
-                        style={[
-                          styles.modalChip,
-                          isSelected && { borderColor: cc.color, backgroundColor: `${cc.color}15` },
-                        ]}
-                        onPress={() => setCategory(cc.name)}
-                      >
-                        <MaterialIcons
-                          name={cc.icon as any}
-                          size={20}
-                          color={isSelected ? cc.color : COLORS.textMuted}
-                        />
-                        <Text style={[styles.modalChipText, isSelected && { color: cc.color }]}>
-                          {cc.name}
                         </Text>
                       </TouchableOpacity>
                     );
@@ -819,6 +843,32 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     borderWidth: 1,
     borderColor: COLORS.border,
+  },
+  frequencyRow: {
+    flexDirection: 'row',
+    gap: SPACING.sm,
+    marginBottom: SPACING.sm,
+  },
+  frequencyChip: {
+    flex: 1,
+    paddingVertical: SPACING.sm + 2,
+    borderRadius: BORDER_RADIUS.md,
+    backgroundColor: COLORS.surface,
+    borderWidth: 1.5,
+    borderColor: COLORS.border,
+    alignItems: 'center',
+  },
+  frequencyChipActive: {
+    borderColor: COLORS.primary,
+    backgroundColor: `${COLORS.primary}15`,
+  },
+  frequencyChipText: {
+    fontSize: FONT_SIZE.xs,
+    color: COLORS.textMuted,
+    fontWeight: '600',
+  },
+  frequencyChipTextActive: {
+    color: COLORS.primary,
   },
   modalChipGrid: {
     flexDirection: 'row',

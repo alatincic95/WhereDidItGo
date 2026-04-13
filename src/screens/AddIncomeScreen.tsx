@@ -23,6 +23,7 @@ import {
   BORDER_RADIUS,
   SHADOWS,
 } from '../constants/theme';
+import { useTheme } from '../contexts/ThemeContext';
 import {
   Income,
   INCOME_SOURCES,
@@ -32,6 +33,7 @@ import {
 } from '../types';
 
 export const AddIncomeScreen: React.FC = () => {
+  const { colors, isDark } = useTheme();
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const editingIncome: Income | undefined = route.params?.income;
@@ -109,7 +111,7 @@ export const AddIncomeScreen: React.FC = () => {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1 }}

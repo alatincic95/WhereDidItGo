@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, StyleSheet, ViewStyle } from 'react-native';
-import { COLORS, BORDER_RADIUS, SPACING } from '../constants/theme';
+import { useTheme } from '../contexts/ThemeContext';
+import { BORDER_RADIUS, SPACING } from '../constants/theme';
 
 interface GlassCardProps {
   children: React.ReactNode;
@@ -12,26 +13,37 @@ interface GlassCardProps {
 export const GlassCard: React.FC<GlassCardProps> = ({
   children,
   style,
-  glowColor = COLORS.primary,
+  glowColor,
   intensity = 'medium',
 }) => {
+  const { colors, isDark } = useTheme();
+  const color = glowColor || colors.primary;
   const glowOpacity = intensity === 'high' ? 0.3 : intensity === 'medium' ? 0.15 : 0.08;
 
   return (
     <View style={[styles.container, style]}>
-      {/* Glow effect behind the card */}
-      <View
-        style={[
-          styles.glow,
-          {
-            backgroundColor: glowColor,
-            opacity: glowOpacity,
-          },
-        ]}
-      />
-      {/* Glass surface */}
-      <View style={styles.glass}>
-        <View style={styles.innerBorder} />
+      {isDark && (
+        <View
+          style={[
+            styles.glow,
+            {
+              backgroundColor: color,
+              opacity: glowOpacity,
+            },
+          ]}
+        />
+      )}
+      <View style={[
+        styles.glass,
+        {
+          backgroundColor: isDark ? 'rgba(22, 33, 62, 0.85)' : colors.backgroundCard,
+          borderColor: isDark ? 'rgba(108, 99, 255, 0.15)' : colors.border,
+        },
+      ]}>
+        <View style={[
+          styles.innerBorder,
+          { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(108, 99, 255, 0.05)' },
+        ]} />
         {children}
       </View>
     </View>
@@ -52,10 +64,8 @@ const styles = StyleSheet.create({
     transform: [{ scale: 1.02 }],
   },
   glass: {
-    backgroundColor: 'rgba(22, 33, 62, 0.85)',
     borderRadius: BORDER_RADIUS.lg,
     borderWidth: 1,
-    borderColor: 'rgba(108, 99, 255, 0.15)',
     padding: SPACING.lg,
     overflow: 'hidden',
   },
@@ -65,6 +75,5 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
   },
 });

@@ -1,8 +1,9 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Expense, FixedExpense, FixedIncome, Income, Budget, CustomCategory, ExchangeRate, SavingsGoal, BudgetTemplate } from '../types';
+import { Expense, FixedExpense, FixedIncome, Income, Budget, CustomCategory, ExchangeRate, SavingsGoal, BudgetTemplate, CategoryBudget, FREQUENCY_TO_MONTHLY, EXPENSE_CATEGORIES } from '../types';
 import { Platform } from 'react-native';
+import { ThemeMode } from '../constants/theme';
 
 const uuidv4 = (): string => {
   if (Platform.OS === 'web') {
@@ -65,10 +66,36 @@ interface ExpenseState {
   addCustomCategory: (category: CustomCategory) => void;
   deleteCustomCategory: (name: string) => void;
 
+  // Category Order
+  categoryOrder: string[];
+  setCategoryOrder: (order: string[]) => void;
+  getOrderedCategories: () => string[];
+
+  // Category Budgets
+  categoryBudgets: CategoryBudget[];
+  setCategoryBudget: (category: string, monthlyLimit: number) => void;
+  removeCategoryBudget: (category: string) => void;
+  toggleCategoryBudget: (category: string) => void;
+  getCategoryBudgetStatus: (month: string) => Array<{
+    category: string;
+    limit: number;
+    spent: number;
+    percentage: number;
+    enabled: boolean;
+  }>;
+
+  // App Settings
+  themeMode: ThemeMode;
+  biometricEnabled: boolean;
+  onboardingCompleted: boolean;
+
   // Settings
   setInitialBalance: (amount: number) => void;
   setMonthlyIncome: (amount: number) => void;
   setCurrencySymbol: (symbol: string) => void;
+  setThemeMode: (mode: ThemeMode) => void;
+  setBiometricEnabled: (enabled: boolean) => void;
+  setOnboardingCompleted: (completed: boolean) => void;
 
   // Computed
   getMonthlyExpenses: (month: string) => Expense[];
@@ -103,6 +130,38 @@ interface ExpenseState {
   // Trends
   getMonthlyTotalsHistory: () => { month: string; expenses: number; income: number }[];
   getMonthlyCategoryHistory: () => { month: string; categories: Record<string, number> }[];
+
+  // Backup / Restore
+  restoreFromBackup: (data: {
+    expenses: Expense[];
+    fixedExpenses: FixedExpense[];
+    incomes: Income[];
+    fixedIncomes: FixedIncome[];
+    budgets: Budget[];
+    customCategories: CustomCategory[];
+    exchangeRates: ExchangeRate[];
+    savingsGoals: SavingsGoal[];
+    budgetTemplates: BudgetTemplate[];
+    categoryBudgets?: CategoryBudget[];
+    initialBalance: number;
+    monthlyIncome: number;
+    currencySymbol: string;
+  }) => void;
+  getBackupState: () => {
+    expenses: Expense[];
+    fixedExpenses: FixedExpense[];
+    incomes: Income[];
+    fixedIncomes: FixedIncome[];
+    budgets: Budget[];
+    customCategories: CustomCategory[];
+    exchangeRates: ExchangeRate[];
+    savingsGoals: SavingsGoal[];
+    budgetTemplates: BudgetTemplate[];
+    categoryBudgets: CategoryBudget[];
+    initialBalance: number;
+    monthlyIncome: number;
+    currencySymbol: string;
+  };
 }
 
 export const useExpenseStore = create<ExpenseState>()(
@@ -204,10 +263,15 @@ export const useExpenseStore = create<ExpenseState>()(
   ],
   incomes: [],
   customCategories: [],
+  categoryOrder: [],
   initialBalance: 5000,
   monthlyIncome: 3000,
   currencySymbol: '$',
   exchangeRates: [],
+  categoryBudgets: [],
+  themeMode: 'dark' as ThemeMode,
+  biometricEnabled: false,
+  onboardingCompleted: false,
 
   // Exchange Rate Actions
   addExchangeRate: (rate) =>
@@ -317,7 +381,10 @@ export const useExpenseStore = create<ExpenseState>()(
 
   getFixedIncomesTotal: () => {
     const { fixedIncomes } = get();
-    return fixedIncomes.reduce((sum, i) => sum + i.amount, 0);
+    return fixedIncomes.reduce((sum, i) => {
+      const multiplier = FREQUENCY_TO_MONTHLY[i.frequency || 'monthly'];
+      return sum + i.amount * multiplier;
+    }, 0);
   },
 
   // Budget Actions
@@ -353,12 +420,88 @@ export const useExpenseStore = create<ExpenseState>()(
   deleteCustomCategory: (name) =>
     set((state) => ({
       customCategories: state.customCategories.filter((c) => c.name !== name),
+      categoryOrder: state.categoryOrder.filter((n) => n !== name),
     })),
+
+  // Category Order
+  setCategoryOrder: (order) => set({ categoryOrder: order }),
+
+  getOrderedCategories: () => {
+    const { categoryOrder, customCategories } = get();
+    const allNames = [
+      ...EXPENSE_CATEGORIES,
+      ...customCategories.map((c) => c.name),
+    ];
+    if (categoryOrder.length === 0) return allNames;
+    // Put saved order first, then any new categories not yet in the order
+    const ordered = categoryOrder.filter((n) => allNames.includes(n));
+    const remaining = allNames.filter((n) => !ordered.includes(n));
+    return [...ordered, ...remaining];
+  },
+
+  // Category Budgets
+  setCategoryBudget: (category, monthlyLimit) =>
+    set((state) => {
+      const existing = state.categoryBudgets.find((b) => b.category === category);
+      if (existing) {
+        return {
+          categoryBudgets: state.categoryBudgets.map((b) =>
+            b.category === category ? { ...b, monthlyLimit } : b
+          ),
+        };
+      }
+      return {
+        categoryBudgets: [...state.categoryBudgets, { category, monthlyLimit, enabled: true }],
+      };
+    }),
+
+  removeCategoryBudget: (category) =>
+    set((state) => ({
+      categoryBudgets: state.categoryBudgets.filter((b) => b.category !== category),
+    })),
+
+  toggleCategoryBudget: (category) =>
+    set((state) => ({
+      categoryBudgets: state.categoryBudgets.map((b) =>
+        b.category === category ? { ...b, enabled: !b.enabled } : b
+      ),
+    })),
+
+  getCategoryBudgetStatus: (month) => {
+    const { categoryBudgets, fixedExpenses } = get();
+    const monthlyExpenses = get().getMonthlyExpenses(month);
+    const convert = get().convertToBase;
+
+    return categoryBudgets.map((cb) => {
+      let spent = 0;
+      monthlyExpenses.forEach((e) => {
+        if (e.category === cb.category) {
+          spent += convert(e.amount, e.currency);
+        }
+      });
+      fixedExpenses.forEach((e) => {
+        if (e.category === cb.category) {
+          const multiplier = FREQUENCY_TO_MONTHLY[e.frequency || 'monthly'];
+          spent += e.amount * multiplier;
+        }
+      });
+      return {
+        category: cb.category,
+        limit: cb.monthlyLimit,
+        spent,
+        percentage: cb.monthlyLimit > 0 ? spent / cb.monthlyLimit : 0,
+        enabled: cb.enabled,
+      };
+    });
+  },
 
   // Settings
   setInitialBalance: (amount) => set({ initialBalance: amount }),
   setMonthlyIncome: (amount) => set({ monthlyIncome: amount }),
   setCurrencySymbol: (symbol) => set({ currencySymbol: symbol }),
+  setThemeMode: (mode) => set({ themeMode: mode }),
+  setBiometricEnabled: (enabled) => set({ biometricEnabled: enabled }),
+  setOnboardingCompleted: (completed) => set({ onboardingCompleted: completed }),
 
   // Computed
   getMonthlyExpenses: (month) => {
@@ -374,7 +517,10 @@ export const useExpenseStore = create<ExpenseState>()(
 
   getFixedExpensesTotal: () => {
     const { fixedExpenses } = get();
-    return fixedExpenses.reduce((sum, e) => sum + e.amount, 0);
+    return fixedExpenses.reduce((sum, e) => {
+      const multiplier = FREQUENCY_TO_MONTHLY[e.frequency || 'monthly'];
+      return sum + e.amount * multiplier;
+    }, 0);
   },
 
   getMonthlyIncomes: (month) => {
@@ -572,6 +718,43 @@ export const useExpenseStore = create<ExpenseState>()(
       categories: get().getCategoryTotals(month),
     }));
   },
+
+  // Backup / Restore
+  restoreFromBackup: (data) =>
+    set({
+      expenses: data.expenses || [],
+      fixedExpenses: data.fixedExpenses || [],
+      incomes: data.incomes || [],
+      fixedIncomes: data.fixedIncomes || [],
+      budgets: data.budgets || [],
+      customCategories: data.customCategories || [],
+      exchangeRates: data.exchangeRates || [],
+      savingsGoals: data.savingsGoals || [],
+      budgetTemplates: data.budgetTemplates || [],
+      categoryBudgets: data.categoryBudgets || [],
+      initialBalance: data.initialBalance ?? 0,
+      monthlyIncome: data.monthlyIncome ?? 0,
+      currencySymbol: data.currencySymbol || '$',
+    }),
+
+  getBackupState: () => {
+    const s = get();
+    return {
+      expenses: s.expenses,
+      fixedExpenses: s.fixedExpenses,
+      incomes: s.incomes,
+      fixedIncomes: s.fixedIncomes,
+      budgets: s.budgets,
+      customCategories: s.customCategories,
+      exchangeRates: s.exchangeRates,
+      savingsGoals: s.savingsGoals,
+      budgetTemplates: s.budgetTemplates,
+      categoryBudgets: s.categoryBudgets,
+      initialBalance: s.initialBalance,
+      monthlyIncome: s.monthlyIncome,
+      currencySymbol: s.currencySymbol,
+    };
+  },
     }),
     {
       name: 'expense-store',
@@ -583,12 +766,17 @@ export const useExpenseStore = create<ExpenseState>()(
         fixedIncomes: state.fixedIncomes,
         budgets: state.budgets,
         customCategories: state.customCategories,
+        categoryOrder: state.categoryOrder,
         exchangeRates: state.exchangeRates,
         initialBalance: state.initialBalance,
         monthlyIncome: state.monthlyIncome,
         currencySymbol: state.currencySymbol,
         savingsGoals: state.savingsGoals,
         budgetTemplates: state.budgetTemplates,
+        categoryBudgets: state.categoryBudgets,
+        themeMode: state.themeMode,
+        biometricEnabled: state.biometricEnabled,
+        onboardingCompleted: state.onboardingCompleted,
       }),
       // Migrate old 'projects' key to 'budgets'
       migrate: (persistedState: any, version: number) => {

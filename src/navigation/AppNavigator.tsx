@@ -15,21 +15,42 @@ import { NotificationsScreen } from '../screens/NotificationsScreen';
 import { AddIncomeScreen } from '../screens/AddIncomeScreen';
 import { TrendsScreen } from '../screens/TrendsScreen';
 import { SavingsGoalsScreen } from '../screens/SavingsGoalsScreen';
-import { COLORS } from '../constants/theme';
+import { SettingsScreen } from '../screens/SettingsScreen';
+import { DataTransferScreen } from '../screens/DataTransferScreen';
+import { ReorderCategoriesScreen } from '../screens/ReorderCategoriesScreen';
+import { CategoryBudgetsScreen } from '../screens/CategoryBudgetsScreen';
+import { useTheme } from '../contexts/ThemeContext';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
 
 function TabNavigator() {
+  const { colors, isDark } = useTheme();
   return (
     <Tab.Navigator
       screenOptions={{
         headerShown: false,
-        tabBarStyle: styles.tabBar,
-        tabBarActiveTintColor: COLORS.primary,
-        tabBarInactiveTintColor: COLORS.textMuted,
+        tabBarStyle: {
+          backgroundColor: isDark
+            ? 'rgba(15, 15, 26, 0.95)'
+            : 'rgba(245, 246, 250, 0.95)',
+          borderTopWidth: 1,
+          borderTopColor: `${colors.primary}15`,
+          height: 85,
+          paddingTop: 8,
+          paddingBottom: 28,
+          position: 'absolute',
+          elevation: 0,
+        },
+        tabBarActiveTintColor: colors.primary,
+        tabBarInactiveTintColor: colors.textMuted,
         tabBarShowLabel: true,
-        tabBarLabelStyle: styles.tabLabel,
+        tabBarLabelStyle: {
+          fontSize: 11,
+          fontWeight: '600',
+          letterSpacing: 0.3,
+          marginTop: 2,
+        },
       }}
     >
       <Tab.Screen
@@ -122,26 +143,35 @@ export function AppNavigator() {
             animation: 'slide_from_right',
           }}
         />
+        <Stack.Screen
+          name="Settings"
+          component={SettingsScreen}
+          options={{
+            animation: 'slide_from_right',
+          }}
+        />
+        <Stack.Screen
+          name="DataTransfer"
+          component={DataTransferScreen}
+          options={{
+            animation: 'slide_from_right',
+          }}
+        />
+        <Stack.Screen
+          name="ReorderCategories"
+          component={ReorderCategoriesScreen}
+          options={{
+            animation: 'slide_from_right',
+          }}
+        />
+        <Stack.Screen
+          name="CategoryBudgets"
+          component={CategoryBudgetsScreen}
+          options={{
+            animation: 'slide_from_right',
+          }}
+        />
       </Stack.Navigator>
     </NavigationContainer>
   );
 }
-
-const styles = StyleSheet.create({
-  tabBar: {
-    backgroundColor: 'rgba(15, 15, 26, 0.95)',
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(108, 99, 255, 0.1)',
-    height: 85,
-    paddingTop: 8,
-    paddingBottom: 28,
-    position: 'absolute',
-    elevation: 0,
-  },
-  tabLabel: {
-    fontSize: 11,
-    fontWeight: '600',
-    letterSpacing: 0.3,
-    marginTop: 2,
-  },
-});

@@ -17,6 +17,7 @@ import {
   FONT_SIZE,
   BORDER_RADIUS,
 } from '../constants/theme';
+import { useTheme } from '../contexts/ThemeContext';
 import { AppNotification } from '../types';
 
 const formatTimeAgo = (dateStr: string) => {
@@ -55,6 +56,7 @@ const groupNotifications = (notifications: AppNotification[]) => {
 };
 
 export const NotificationsScreen: React.FC = () => {
+  const { colors, isDark } = useTheme();
   const navigation = useNavigation<any>();
   const {
     notifications,
@@ -165,7 +167,7 @@ export const NotificationsScreen: React.FC = () => {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
