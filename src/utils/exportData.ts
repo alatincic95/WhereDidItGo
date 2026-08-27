@@ -1,7 +1,7 @@
 import { Platform, Share } from 'react-native';
 import { File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
-import { Expense, FixedExpense, FixedIncome, Income, Budget, CustomCategory, ExchangeRate, SavingsGoal, BudgetTemplate } from '../types';
+import { Expense, FixedExpense, FixedIncome, Income, Budget, CustomCategory, ExchangeRate, SavingsGoal, BudgetTemplate, DashboardCardConfig } from '../types';
 
 function escapeCsv(value: string): string {
   if (value.includes(',') || value.includes('"') || value.includes('\n')) {
@@ -130,6 +130,7 @@ export interface BackupData {
   exchangeRates: ExchangeRate[];
   savingsGoals: SavingsGoal[];
   budgetTemplates: BudgetTemplate[];
+  dashboardCards?: DashboardCardConfig[];
   initialBalance: number;
   monthlyIncome: number;
   currencySymbol: string;

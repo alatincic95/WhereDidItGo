@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { View, Text, StyleSheet, Platform } from 'react-native';
+import { View, Text, StyleSheet, Platform, Keyboard, TouchableWithoutFeedback } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialIcons } from '@expo/vector-icons';
 import * as LocalAuthentication from 'expo-local-authentication';
@@ -8,6 +8,8 @@ import { AppNavigator } from './src/navigation/AppNavigator';
 import { ThemeProvider, useTheme } from './src/contexts/ThemeContext';
 import { useExpenseStore } from './src/store/useExpenseStore';
 import { OnboardingScreen } from './src/screens/OnboardingScreen';
+import { UndoSnackbar } from './src/components/UndoSnackbar';
+import { scheduleBillReminders } from './src/utils/localNotifications';
 
 function BiometricGate({ children }: { children: React.ReactNode }) {
   const biometricEnabled = useExpenseStore((s) => s.biometricEnabled);
@@ -81,16 +83,30 @@ function OnboardingGate({ children }: { children: React.ReactNode }) {
 
 function AppContent() {
   const { isDark } = useTheme();
+  const processAutoContributions = useExpenseStore((s) => s.processAutoContributions);
+  const processRecurringExpenses = useExpenseStore((s) => s.processRecurringExpenses);
+  const pushNotificationsEnabled = useExpenseStore((s) => s.pushNotificationsEnabled);
+  const fixedExpenses = useExpenseStore((s) => s.fixedExpenses);
+  const currencySymbol = useExpenseStore((s) => s.currencySymbol);
+
+  useEffect(() => {
+    processAutoContributions();
+    processRecurringExpenses();
+    if (pushNotificationsEnabled) {
+      scheduleBillReminders(fixedExpenses, currencySymbol);
+    }
+  }, []);
 
   return (
-    <>
+    <View style={{ flex: 1 }} onStartShouldSetResponder={() => { Keyboard.dismiss(); return false; }}>
       <StatusBar style={isDark ? 'light' : 'dark'} />
       <BiometricGate>
         <OnboardingGate>
           <AppNavigator />
         </OnboardingGate>
       </BiometricGate>
-    </>
+      <UndoSnackbar />
+    </View>
   );
 }
 

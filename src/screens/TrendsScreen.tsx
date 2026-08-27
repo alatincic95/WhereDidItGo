@@ -18,11 +18,19 @@ import { COLORS, SPACING, FONT_SIZE, BORDER_RADIUS, SHADOWS } from '../constants
 import { useTheme } from '../contexts/ThemeContext';
 import { formatCurrency } from '../utils/currency';
 
+import { TrendTimeRange, YoYMonthData } from '../types';
+
 type ChartMode = 'expenses' | 'income' | 'both';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const CHART_PADDING = SPACING.lg * 2 + SPACING.lg * 2; // screen + card padding
 const CHART_WIDTH = SCREEN_WIDTH - CHART_PADDING;
+
+const YEAR_COLORS: string[][] = [
+  ['#6C63FF', '#BB8FCE'], // purple
+  ['#FF6B9D', '#FF8E53'], // pink-orange
+  ['#00D68F', '#45B7D1'], // green-blue
+];
 
 const formatMonth = (m: string) => {
   const [year, month] = m.split('-');
@@ -34,25 +42,37 @@ export const TrendsScreen: React.FC = () => {
   const { colors, isDark } = useTheme();
   const navigation = useNavigation<any>();
   const [chartMode, setChartMode] = useState<ChartMode>('both');
+  const [timeRange, setTimeRange] = useState<TrendTimeRange>('6m');
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
   const {
     getMonthlyTotalsHistory,
     getMonthlyCategoryHistory,
+    getYearOverYearData,
     currencySymbol,
   } = useExpenseStore();
 
   const history = getMonthlyTotalsHistory();
   const categoryHistory = getMonthlyCategoryHistory();
+  const yoyData = getYearOverYearData();
 
-  // Show last 6 months
-  const displayHistory = history.slice(-6);
+  const displayHistory = timeRange === '12m' ? history.slice(-12) : history.slice(-6);
   const maxValue = Math.max(
     ...displayHistory.map((h) =>
       chartMode === 'expenses' ? h.expenses :
       chartMode === 'income' ? h.income :
       Math.max(h.expenses, h.income)
     ),
+    1
+  );
+
+  // YoY max value
+  const yoyMaxValue = Math.max(
+    ...yoyData.flatMap((m) => m.years.flatMap((y) =>
+      chartMode === 'expenses' ? [y.expenses] :
+      chartMode === 'income' ? [y.income] :
+      [y.expenses, y.income]
+    )),
     1
   );
 
@@ -72,6 +92,20 @@ export const TrendsScreen: React.FC = () => {
     ? ((currentMonth.expenses - prevMonth.expenses) / prevMonth.expenses) * 100
     : null;
 
+  // YoY comparison for current month
+  const now = new Date();
+  const currentMonthIndex = now.getMonth();
+  const yoyCurrentMonth = yoyData.find((m) => m.monthIndex === currentMonthIndex);
+  const yoyChange = yoyCurrentMonth && yoyCurrentMonth.years.length >= 2
+    ? (() => {
+        const latest = yoyCurrentMonth.years[yoyCurrentMonth.years.length - 1];
+        const prev = yoyCurrentMonth.years[yoyCurrentMonth.years.length - 2];
+        return prev.expenses > 0
+          ? ((latest.expenses - prev.expenses) / prev.expenses) * 100
+          : null;
+      })()
+    : null;
+
   useEffect(() => {
     Animated.timing(fadeAnim, {
       toValue: 1,
@@ -80,18 +114,26 @@ export const TrendsScreen: React.FC = () => {
     }).start();
   }, []);
 
-  const barWidth = displayHistory.length > 0
-    ? Math.min((CHART_WIDTH - (displayHistory.length - 1) * 8) / (displayHistory.length * (chartMode === 'both' ? 2 : 1)), 32)
+  const barCount = displayHistory.length;
+  const barWidth = barCount > 0
+    ? Math.min((CHART_WIDTH - (barCount - 1) * 8) / (barCount * (chartMode === 'both' ? 2 : 1)), 32)
     : 32;
+
+  // YoY bar width calculation
+  const maxYears = Math.max(...yoyData.map((m) => m.years.length), 1);
+  const yoyBarCount = yoyData.length;
+  const yoyBarWidth = yoyBarCount > 0
+    ? Math.min((CHART_WIDTH - (yoyBarCount - 1) * 8) / (yoyBarCount * maxYears * (chartMode === 'both' ? 2 : 1)), 24)
+    : 24;
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-          <MaterialIcons name="arrow-back" size={24} color={COLORS.textPrimary} />
+        <TouchableOpacity style={[styles.backBtn, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={() => navigation.goBack()}>
+          <MaterialIcons name="arrow-back" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Trends</Text>
+        <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Trends</Text>
         <View style={{ width: 40 }} />
       </View>
 
@@ -100,8 +142,27 @@ export const TrendsScreen: React.FC = () => {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
+        {/* Time Range Toggle */}
+        <View style={[styles.toggleWrapper, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          {([['6m', '6 Mo'], ['12m', '12 Mo'], ['yoy', 'Year over Year']] as [TrendTimeRange, string][]).map(([range, label]) => (
+            <TouchableOpacity
+              key={range}
+              style={[styles.toggleBtn, timeRange === range && styles.toggleBtnActive]}
+              onPress={() => setTimeRange(range)}
+            >
+              {timeRange === range ? (
+                <LinearGradient colors={['#6C63FF', '#BB8FCE']} style={styles.toggleGradient}>
+                  <Text style={styles.toggleTextActive}>{label}</Text>
+                </LinearGradient>
+              ) : (
+                <Text style={[styles.toggleText, { color: colors.textMuted }]}>{label}</Text>
+              )}
+            </TouchableOpacity>
+          ))}
+        </View>
+
         {/* Chart Mode Toggle */}
-        <View style={styles.toggleWrapper}>
+        <View style={[styles.toggleWrapper, { marginBottom: SPACING.lg, backgroundColor: colors.surface, borderColor: colors.border }]}>
           {(['expenses', 'income', 'both'] as ChartMode[]).map((mode) => (
             <TouchableOpacity
               key={mode}
@@ -122,7 +183,7 @@ export const TrendsScreen: React.FC = () => {
                   </Text>
                 </LinearGradient>
               ) : (
-                <Text style={styles.toggleText}>
+                <Text style={[styles.toggleText, { color: colors.textMuted }]}>
                   {mode === 'both' ? 'Both' : mode.charAt(0).toUpperCase() + mode.slice(1)}
                 </Text>
               )}
@@ -130,8 +191,8 @@ export const TrendsScreen: React.FC = () => {
           ))}
         </View>
 
-        {/* Month-over-Month Summary */}
-        {expenseChange !== null && (
+        {/* Month-over-Month / YoY Summary */}
+        {timeRange !== 'yoy' && expenseChange !== null && (
           <GlassCard style={styles.changeCard} glowColor={expenseChange > 0 ? COLORS.danger : COLORS.success} intensity="low">
             <View style={styles.changeRow}>
               <View style={[styles.changeIcon, { backgroundColor: expenseChange > 0 ? 'rgba(255, 61, 113, 0.12)' : 'rgba(0, 214, 143, 0.12)' }]}>
@@ -142,16 +203,16 @@ export const TrendsScreen: React.FC = () => {
                 />
               </View>
               <View style={styles.changeInfo}>
-                <Text style={styles.changeLabel}>vs Last Month</Text>
+                <Text style={[styles.changeLabel, { color: colors.textMuted }]}>vs Last Month</Text>
                 <Text style={[styles.changeValue, { color: expenseChange > 0 ? COLORS.danger : COLORS.success }]}>
                   {expenseChange > 0 ? '+' : ''}{expenseChange.toFixed(1)}% spending
                 </Text>
               </View>
               <View>
-                <Text style={styles.changeAmount}>
+                <Text style={[styles.changeAmount, { color: colors.textPrimary }]}>
                   {formatCurrency(currentMonth?.expenses || 0)}
                 </Text>
-                <Text style={styles.changePrev}>
+                <Text style={[styles.changePrev, { color: colors.textMuted }]}>
                   from {formatCurrency(prevMonth?.expenses || 0)}
                 </Text>
               </View>
@@ -159,82 +220,168 @@ export const TrendsScreen: React.FC = () => {
           </GlassCard>
         )}
 
-        {/* Bar Chart */}
-        <GlassCard style={styles.chartCard} intensity="low">
-          <Text style={styles.sectionTitle}>Monthly Overview</Text>
-          {displayHistory.length === 0 ? (
-            <Text style={styles.emptyText}>No data yet. Start tracking expenses to see trends.</Text>
-          ) : (
-            <>
-              {/* Y-axis labels */}
-              <View style={styles.chartContainer}>
-                <View style={styles.yAxis}>
-                  <Text style={styles.yLabel}>{formatCurrency(maxValue)}</Text>
-                  <Text style={styles.yLabel}>{formatCurrency(maxValue / 2)}</Text>
-                  <Text style={styles.yLabel}>{currencySymbol}0</Text>
-                </View>
-
-                {/* Bars */}
-                <View style={styles.barsContainer}>
-                  {/* Grid lines */}
-                  <View style={[styles.gridLine, { bottom: '100%' }]} />
-                  <View style={[styles.gridLine, { bottom: '50%' }]} />
-                  <View style={[styles.gridLine, { bottom: 0 }]} />
-
-                  {displayHistory.map((item, index) => {
-                    const expenseHeight = (item.expenses / maxValue) * 100;
-                    const incomeHeight = (item.income / maxValue) * 100;
-
-                    return (
-                      <View key={item.month} style={styles.barGroup}>
-                        <View style={styles.barPair}>
-                          {(chartMode === 'expenses' || chartMode === 'both') && (
-                            <View style={[styles.barWrapper, { width: barWidth }]}>
-                              <LinearGradient
-                                colors={['#FF6B9D', '#FF8E53']}
-                                style={[styles.bar, { height: `${Math.max(expenseHeight, 2)}%` }]}
-                              />
-                            </View>
-                          )}
-                          {(chartMode === 'income' || chartMode === 'both') && (
-                            <View style={[styles.barWrapper, { width: barWidth }]}>
-                              <LinearGradient
-                                colors={['#00D68F', '#45B7D1']}
-                                style={[styles.bar, { height: `${Math.max(incomeHeight, 2)}%` }]}
-                              />
-                            </View>
-                          )}
-                        </View>
-                        <Text style={styles.barLabel}>{formatMonth(item.month)}</Text>
-                      </View>
-                    );
-                  })}
-                </View>
+        {timeRange === 'yoy' && yoyChange !== null && yoyCurrentMonth && (
+          <GlassCard style={styles.changeCard} glowColor={yoyChange > 0 ? COLORS.danger : COLORS.success} intensity="low">
+            <View style={styles.changeRow}>
+              <View style={[styles.changeIcon, { backgroundColor: yoyChange > 0 ? 'rgba(255, 61, 113, 0.12)' : 'rgba(0, 214, 143, 0.12)' }]}>
+                <MaterialIcons
+                  name={yoyChange > 0 ? 'trending-up' : 'trending-down'}
+                  size={22}
+                  color={yoyChange > 0 ? COLORS.danger : COLORS.success}
+                />
               </View>
+              <View style={styles.changeInfo}>
+                <Text style={[styles.changeLabel, { color: colors.textMuted }]}>
+                  {yoyCurrentMonth.monthLabel} {yoyCurrentMonth.years[yoyCurrentMonth.years.length - 1].year} vs {yoyCurrentMonth.years[yoyCurrentMonth.years.length - 2].year}
+                </Text>
+                <Text style={[styles.changeValue, { color: yoyChange > 0 ? COLORS.danger : COLORS.success }]}>
+                  {yoyChange > 0 ? '+' : ''}{yoyChange.toFixed(1)}% spending
+                </Text>
+              </View>
+            </View>
+          </GlassCard>
+        )}
 
-              {/* Legend */}
-              {chartMode === 'both' && (
-                <View style={styles.legend}>
-                  <View style={styles.legendItem}>
-                    <View style={[styles.legendDot, { backgroundColor: '#FF6B9D' }]} />
-                    <Text style={styles.legendText}>Expenses</Text>
+        {/* Bar Chart — standard (6m/12m) */}
+        {timeRange !== 'yoy' && (
+          <GlassCard style={styles.chartCard} intensity="low">
+            <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Monthly Overview</Text>
+            {displayHistory.length === 0 ? (
+              <Text style={[styles.emptyText, { color: colors.textMuted }]}>No data yet. Start tracking expenses to see trends.</Text>
+            ) : (
+              <>
+                <View style={styles.chartContainer}>
+                  <View style={styles.yAxis}>
+                    <Text style={[styles.yLabel, { color: colors.textMuted }]}>{formatCurrency(maxValue)}</Text>
+                    <Text style={[styles.yLabel, { color: colors.textMuted }]}>{formatCurrency(maxValue / 2)}</Text>
+                    <Text style={[styles.yLabel, { color: colors.textMuted }]}>{currencySymbol}0</Text>
                   </View>
-                  <View style={styles.legendItem}>
-                    <View style={[styles.legendDot, { backgroundColor: '#00D68F' }]} />
-                    <Text style={styles.legendText}>Income</Text>
+                  <View style={styles.barsContainer}>
+                    <View style={[styles.gridLine, { bottom: '100%', backgroundColor: isDark ? 'rgba(108, 99, 255, 0.08)' : colors.border }]} />
+                    <View style={[styles.gridLine, { bottom: '50%', backgroundColor: isDark ? 'rgba(108, 99, 255, 0.08)' : colors.border }]} />
+                    <View style={[styles.gridLine, { bottom: 0, backgroundColor: isDark ? 'rgba(108, 99, 255, 0.08)' : colors.border }]} />
+
+                    {displayHistory.map((item) => {
+                      const expenseHeight = (item.expenses / maxValue) * 100;
+                      const incomeHeight = (item.income / maxValue) * 100;
+                      return (
+                        <View key={item.month} style={styles.barGroup}>
+                          <View style={styles.barPair}>
+                            {(chartMode === 'expenses' || chartMode === 'both') && (
+                              <View style={[styles.barWrapper, { width: barWidth }]}>
+                                <LinearGradient
+                                  colors={['#FF6B9D', '#FF8E53']}
+                                  style={[styles.bar, { height: `${Math.max(expenseHeight, 2)}%` }]}
+                                />
+                              </View>
+                            )}
+                            {(chartMode === 'income' || chartMode === 'both') && (
+                              <View style={[styles.barWrapper, { width: barWidth }]}>
+                                <LinearGradient
+                                  colors={['#00D68F', '#45B7D1']}
+                                  style={[styles.bar, { height: `${Math.max(incomeHeight, 2)}%` }]}
+                                />
+                              </View>
+                            )}
+                          </View>
+                          <Text style={[styles.barLabel, { color: colors.textMuted }]}>{formatMonth(item.month)}</Text>
+                        </View>
+                      );
+                    })}
                   </View>
                 </View>
-              )}
-            </>
-          )}
-        </GlassCard>
+                {chartMode === 'both' && (
+                  <View style={styles.legend}>
+                    <View style={styles.legendItem}>
+                      <View style={[styles.legendDot, { backgroundColor: '#FF6B9D' }]} />
+                      <Text style={[styles.legendText, { color: colors.textSecondary }]}>Expenses</Text>
+                    </View>
+                    <View style={styles.legendItem}>
+                      <View style={[styles.legendDot, { backgroundColor: '#00D68F' }]} />
+                      <Text style={[styles.legendText, { color: colors.textSecondary }]}>Income</Text>
+                    </View>
+                  </View>
+                )}
+              </>
+            )}
+          </GlassCard>
+        )}
+
+        {/* Bar Chart — Year over Year */}
+        {timeRange === 'yoy' && (
+          <GlassCard style={styles.chartCard} intensity="low">
+            <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Year-over-Year Comparison</Text>
+            {yoyData.length === 0 ? (
+              <Text style={[styles.emptyText, { color: colors.textMuted }]}>No data yet. Start tracking expenses to see trends.</Text>
+            ) : (
+              <>
+                <View style={styles.chartContainer}>
+                  <View style={styles.yAxis}>
+                    <Text style={[styles.yLabel, { color: colors.textMuted }]}>{formatCurrency(yoyMaxValue)}</Text>
+                    <Text style={[styles.yLabel, { color: colors.textMuted }]}>{formatCurrency(yoyMaxValue / 2)}</Text>
+                    <Text style={[styles.yLabel, { color: colors.textMuted }]}>{currencySymbol}0</Text>
+                  </View>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flex: 1 }}>
+                    <View style={[styles.barsContainer, { minWidth: yoyBarCount * (maxYears * yoyBarWidth * (chartMode === 'both' ? 2 : 1) + 16) }]}>
+                      <View style={[styles.gridLine, { bottom: '100%', backgroundColor: isDark ? 'rgba(108, 99, 255, 0.08)' : colors.border }]} />
+                      <View style={[styles.gridLine, { bottom: '50%', backgroundColor: isDark ? 'rgba(108, 99, 255, 0.08)' : colors.border }]} />
+                      <View style={[styles.gridLine, { bottom: 0, backgroundColor: isDark ? 'rgba(108, 99, 255, 0.08)' : colors.border }]} />
+
+                      {yoyData.map((monthData) => (
+                        <View key={monthData.monthIndex} style={styles.barGroup}>
+                          <View style={styles.barPair}>
+                            {monthData.years.map((yearData, yearIdx) => {
+                              const expHeight = (yearData.expenses / yoyMaxValue) * 100;
+                              const incHeight = (yearData.income / yoyMaxValue) * 100;
+                              const yearColors = YEAR_COLORS[yearIdx % YEAR_COLORS.length];
+                              return (
+                                <React.Fragment key={yearData.year}>
+                                  {(chartMode === 'expenses' || chartMode === 'both') && (
+                                    <View style={[styles.barWrapper, { width: yoyBarWidth }]}>
+                                      <LinearGradient
+                                        colors={yearColors as [string, string]}
+                                        style={[styles.bar, { height: `${Math.max(expHeight, 2)}%` }]}
+                                      />
+                                    </View>
+                                  )}
+                                  {(chartMode === 'income' || chartMode === 'both') && (
+                                    <View style={[styles.barWrapper, { width: yoyBarWidth }]}>
+                                      <LinearGradient
+                                        colors={yearColors as [string, string]}
+                                        style={[styles.bar, { height: `${Math.max(incHeight, 2)}%`, opacity: 0.5 }]}
+                                      />
+                                    </View>
+                                  )}
+                                </React.Fragment>
+                              );
+                            })}
+                          </View>
+                          <Text style={[styles.barLabel, { color: colors.textMuted }]}>{monthData.monthLabel}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  </ScrollView>
+                </View>
+                {/* Year Legend */}
+                <View style={styles.legend}>
+                  {yoyData.length > 0 && yoyData[0].years.map((y, idx) => (
+                    <View key={y.year} style={styles.legendItem}>
+                      <View style={[styles.legendDot, { backgroundColor: YEAR_COLORS[idx % YEAR_COLORS.length][0] }]} />
+                      <Text style={[styles.legendText, { color: colors.textSecondary }]}>{y.year}</Text>
+                    </View>
+                  ))}
+                </View>
+              </>
+            )}
+          </GlassCard>
+        )}
 
         {/* Category Breakdown for Current Month */}
         <GlassCard style={styles.categoryCard} intensity="low">
-          <Text style={styles.sectionTitle}>Category Breakdown</Text>
-          <Text style={styles.categorySubtitle}>This month</Text>
+          <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Category Breakdown</Text>
+          <Text style={[styles.categorySubtitle, { color: colors.textMuted }]}>This month</Text>
           {sortedCategories.length === 0 ? (
-            <Text style={styles.emptyText}>No expenses this month</Text>
+            <Text style={[styles.emptyText, { color: colors.textMuted }]}>No expenses this month</Text>
           ) : (
             sortedCategories.map(([category, amount]) => {
               const percentage = (amount / maxCatValue) * 100;
@@ -243,10 +390,10 @@ export const TrendsScreen: React.FC = () => {
                   <CategoryIcon category={category} size={36} />
                   <View style={styles.categoryInfo}>
                     <View style={styles.categoryHeader}>
-                      <Text style={styles.categoryName}>{category}</Text>
-                      <Text style={styles.categoryAmount}>{formatCurrency(amount)}</Text>
+                      <Text style={[styles.categoryName, { color: colors.textPrimary }]}>{category}</Text>
+                      <Text style={[styles.categoryAmount, { color: colors.textSecondary }]}>{formatCurrency(amount)}</Text>
                     </View>
-                    <View style={styles.categoryBar}>
+                    <View style={[styles.categoryBar, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.06)' : `${colors.border}` }]}>
                       <View style={[styles.categoryBarFill, { width: `${percentage}%` }]} />
                     </View>
                   </View>
@@ -258,26 +405,48 @@ export const TrendsScreen: React.FC = () => {
 
         {/* Monthly Summary Table */}
         <GlassCard style={styles.tableCard} intensity="low">
-          <Text style={styles.sectionTitle}>Monthly Summary</Text>
-          <View style={styles.tableHeader}>
-            <Text style={[styles.tableHeaderText, { flex: 1 }]}>Month</Text>
-            <Text style={[styles.tableHeaderText, { width: 90, textAlign: 'right' }]}>Expenses</Text>
-            <Text style={[styles.tableHeaderText, { width: 90, textAlign: 'right' }]}>Income</Text>
-          </View>
-          {[...displayHistory].reverse().map((item) => {
-            const net = item.income - item.expenses;
-            return (
-              <View key={item.month} style={styles.tableRow}>
-                <Text style={[styles.tableCell, { flex: 1 }]}>{formatMonth(item.month)}</Text>
-                <Text style={[styles.tableCellAmount, { width: 90, color: COLORS.accent }]}>
-                  {formatCurrency(item.expenses)}
-                </Text>
-                <Text style={[styles.tableCellAmount, { width: 90, color: COLORS.success }]}>
-                  {formatCurrency(item.income)}
-                </Text>
+          <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
+            {timeRange === 'yoy' ? 'Year-over-Year Summary' : 'Monthly Summary'}
+          </Text>
+          {timeRange !== 'yoy' ? (
+            <>
+              <View style={[styles.tableHeader, { borderBottomColor: colors.border }]}>
+                <Text style={[styles.tableHeaderText, { flex: 1, color: colors.textMuted }]}>Month</Text>
+                <Text style={[styles.tableHeaderText, { width: 90, textAlign: 'right', color: colors.textMuted }]}>Expenses</Text>
+                <Text style={[styles.tableHeaderText, { width: 90, textAlign: 'right', color: colors.textMuted }]}>Income</Text>
               </View>
-            );
-          })}
+              {[...displayHistory].reverse().map((item) => (
+                <View key={item.month} style={[styles.tableRow, { borderBottomColor: isDark ? 'rgba(42, 45, 74, 0.5)' : colors.border }]}>
+                  <Text style={[styles.tableCell, { flex: 1, color: colors.textPrimary }]}>{formatMonth(item.month)}</Text>
+                  <Text style={[styles.tableCellAmount, { width: 90, color: COLORS.accent }]}>
+                    {formatCurrency(item.expenses)}
+                  </Text>
+                  <Text style={[styles.tableCellAmount, { width: 90, color: COLORS.success }]}>
+                    {formatCurrency(item.income)}
+                  </Text>
+                </View>
+              ))}
+            </>
+          ) : (
+            <>
+              <View style={[styles.tableHeader, { borderBottomColor: colors.border }]}>
+                <Text style={[styles.tableHeaderText, { flex: 1, color: colors.textMuted }]}>Month</Text>
+                {yoyData.length > 0 && yoyData[0].years.map((y) => (
+                  <Text key={y.year} style={[styles.tableHeaderText, { width: 80, textAlign: 'right', color: colors.textMuted }]}>{y.year}</Text>
+                ))}
+              </View>
+              {yoyData.map((monthData) => (
+                <View key={monthData.monthIndex} style={[styles.tableRow, { borderBottomColor: isDark ? 'rgba(42, 45, 74, 0.5)' : colors.border }]}>
+                  <Text style={[styles.tableCell, { flex: 1, color: colors.textPrimary }]}>{monthData.monthLabel}</Text>
+                  {monthData.years.map((y) => (
+                    <Text key={y.year} style={[styles.tableCellAmount, { width: 80, color: COLORS.accent }]}>
+                      {formatCurrency(y.expenses)}
+                    </Text>
+                  ))}
+                </View>
+              ))}
+            </>
+          )}
         </GlassCard>
 
         <View style={{ height: 100 }} />

@@ -9,6 +9,8 @@ import {
   Dimensions,
   ScrollView,
   FlatList,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -148,7 +150,7 @@ export const OnboardingScreen: React.FC = () => {
 
       case 2:
         return (
-          <View style={styles.stepContent}>
+          <View style={[styles.stepContent, { justifyContent: 'flex-end', paddingBottom: SPACING.xl }]}>
             <View style={[styles.incomeIcon, { backgroundColor: `${colors.success}20` }]}>
               <MaterialIcons name="attach-money" size={48} color={colors.success} />
             </View>
@@ -240,7 +242,10 @@ export const OnboardingScreen: React.FC = () => {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <KeyboardAvoidingView
+      style={[styles.container, { backgroundColor: colors.background }]}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
       {/* Progress dots */}
       <View style={styles.progressRow}>
         {STEPS.map((_, i) => (
@@ -288,7 +293,7 @@ export const OnboardingScreen: React.FC = () => {
           </TouchableOpacity>
         )}
       </View>
-    </View>
+    </KeyboardAvoidingView>
   );
 };
 

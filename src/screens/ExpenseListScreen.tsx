@@ -24,6 +24,7 @@ import {
   CATEGORY_ICONS,
   ExpenseCategory,
 } from '../types';
+import { exportCsv } from '../utils/exportData';
 
 const MONTHS = [
   'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
@@ -64,7 +65,7 @@ type SortMode = 'date' | 'amount_high' | 'amount_low';
 export const ExpenseListScreen: React.FC = () => {
   const { colors, isDark } = useTheme();
   const navigation = useNavigation<any>();
-  const { expenses, fixedExpenses, getMonthlyExpenses, deleteExpense, getMonthlyTotal, getFixedExpensesTotal, currencySymbol, customCategories, getOrderedCategories } = useExpenseStore();
+  const { expenses, fixedExpenses, incomes, fixedIncomes, getMonthlyExpenses, deleteExpense, getMonthlyTotal, getFixedExpensesTotal, currencySymbol, customCategories, getOrderedCategories } = useExpenseStore();
   const [selectedMonth, setSelectedMonth] = useState<number | null>(new Date().getMonth());
   const [selectedYear] = useState(new Date().getFullYear());
   const [filterOpen, setFilterOpen] = useState(false);
@@ -86,23 +87,10 @@ export const ExpenseListScreen: React.FC = () => {
   const isAllMonths = selectedMonth === null;
   const monthKey = isAllMonths ? '' : `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}`;
 
-  // Convert fixed expenses to regular expense shape with a "Recurring" marker
-  const fixedAsExpenses: Expense[] = fixedExpenses.map((f) => ({
-    id: `fixed-${f.id}`,
-    amount: f.amount,
-    category: f.category,
-    description: `${f.description} (recurring)`,
-    date: isAllMonths
-      ? new Date(selectedYear, new Date().getMonth(), 1).toISOString()
-      : new Date(selectedYear, selectedMonth!, 1).toISOString(),
-    isFixed: true,
-  }));
-
-  const baseExpenses = isAllMonths
+  // Auto-generated recurring entries now exist as real Expense objects (isFixed: true)
+  const monthlyExpenses = isAllMonths
     ? [...expenses].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
     : getMonthlyExpenses(monthKey);
-
-  const monthlyExpenses = [...baseExpenses, ...fixedAsExpenses];
 
   const toggleCategory = (cat: string) => {
     setSelectedCategories((prev) => {
@@ -169,37 +157,47 @@ export const ExpenseListScreen: React.FC = () => {
   const renderExpenseItem = (expense: Expense) => (
     <TouchableOpacity
       key={expense.id}
-      style={styles.expenseItem}
+      style={[styles.expenseItem, { backgroundColor: colors.surface, borderColor: colors.border }]}
       activeOpacity={0.7}
       onPress={() => {
-        if (expense.id.startsWith('fixed-')) return; // recurring items managed in Fixed tab
+        if (expense.isFixed) return; // auto-generated recurring items managed in Recurring tab
         navigation.navigate('AddExpense', { expense });
       }}
     >
       <CategoryIcon category={expense.category} size={44} />
       <View style={styles.expenseInfo}>
-        <Text style={styles.expenseDesc}>
+        <Text style={[styles.expenseDesc, { color: colors.textPrimary }]}>
           {expense.description || expense.category}
         </Text>
         <View style={styles.expenseMeta}>
-          <Text style={styles.expenseCategory}>{expense.category}</Text>
+          <Text style={[styles.expenseCategory, { color: colors.textMuted }]}>{expense.category}</Text>
           {expense.isFixed && (
-            <View style={styles.recurringBadge}>
-              <MaterialIcons name="autorenew" size={10} color={COLORS.primary} />
+            <View style={[styles.recurringBadge, { backgroundColor: `${colors.primary}20` }]}>
+              <MaterialIcons name="autorenew" size={10} color={colors.primary} />
             </View>
           )}
           {expense.receiptUri && (
-            <View style={styles.recurringBadge}>
+            <View style={[styles.recurringBadge, { backgroundColor: `${colors.primary}20` }]}>
               <MaterialIcons name="receipt" size={10} color={COLORS.success} />
             </View>
           )}
+          {expense.splits && expense.splits.length > 0 && (
+            <View style={[styles.recurringBadge, { backgroundColor: `${colors.primary}20` }]}>
+              <MaterialIcons name="call-split" size={10} color={COLORS.warning} />
+            </View>
+          )}
+          {expense.tags && expense.tags.length > 0 && expense.tags.slice(0, 2).map((t) => (
+            <View key={t} style={[styles.tagPill, { backgroundColor: `${colors.primary}18` }]}>
+              <Text style={[styles.tagPillText, { color: colors.primary }]}>#{t}</Text>
+            </View>
+          ))}
         </View>
       </View>
       <View style={styles.expenseRight}>
-        <Text style={styles.expenseAmount}>
+        <Text style={[styles.expenseAmount, { color: colors.accent }]}>
           -{expense.currency ? formatCurrencyWithCode(expense.amount, expense.currency) : formatCurrency(expense.amount)}
         </Text>
-        <Text style={styles.expenseTime}>
+        <Text style={[styles.expenseTime, { color: colors.textMuted }]}>
           {new Date(expense.date).toLocaleTimeString('en-US', {
             hour: '2-digit',
             minute: '2-digit',
@@ -213,12 +211,12 @@ export const ExpenseListScreen: React.FC = () => {
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Expenses</Text>
+        <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Expenses</Text>
         <View style={styles.headerTotal}>
-          <Text style={styles.headerTotalLabel}>
+          <Text style={[styles.headerTotalLabel, { color: colors.textMuted }]}>
             {hasActiveFilters ? 'Filtered' : isAllMonths ? 'All time' : 'This month'}
           </Text>
-          <Text style={styles.headerTotalAmount}>
+          <Text style={[styles.headerTotalAmount, { color: colors.accent }]}>
             {formatCurrency(hasActiveFilters ? filteredTotal : monthlyTotal)}
           </Text>
         </View>
@@ -226,29 +224,35 @@ export const ExpenseListScreen: React.FC = () => {
 
       {/* Search + Filter Row */}
       <View style={styles.searchRow}>
-        <View style={styles.searchBox}>
-          <MaterialIcons name="search" size={20} color={COLORS.textMuted} />
+        <View style={[styles.searchBox, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <MaterialIcons name="search" size={20} color={colors.textMuted} />
           <TextInput
-            style={styles.searchInput}
+            style={[styles.searchInput, { color: colors.textPrimary }]}
             placeholder="Search expenses..."
-            placeholderTextColor={COLORS.textMuted}
+            placeholderTextColor={colors.textMuted}
             value={searchText}
             onChangeText={setSearchText}
           />
           {searchText !== '' && (
             <TouchableOpacity onPress={() => setSearchText('')}>
-              <MaterialIcons name="close" size={18} color={COLORS.textMuted} />
+              <MaterialIcons name="close" size={18} color={colors.textMuted} />
             </TouchableOpacity>
           )}
         </View>
         <TouchableOpacity
-          style={[styles.filterBtn, hasActiveFilters && styles.filterBtnActive]}
+          style={[styles.filterBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
+          onPress={() => exportCsv({ expenses: expenses.filter((e) => !e.isFixed), incomes, fixedExpenses, fixedIncomes })}
+        >
+          <MaterialIcons name="file-download" size={22} color={colors.textMuted} />
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.filterBtn, { backgroundColor: colors.surface, borderColor: colors.border }, hasActiveFilters && styles.filterBtnActive]}
           onPress={() => setFilterOpen(true)}
         >
           <MaterialIcons
             name="tune"
             size={22}
-            color={hasActiveFilters ? '#FFF' : COLORS.textMuted}
+            color={hasActiveFilters ? '#FFF' : colors.textMuted}
           />
         </TouchableOpacity>
       </View>
@@ -305,7 +309,7 @@ export const ExpenseListScreen: React.FC = () => {
             const isSelected = selectedMonth === monthIndex;
             return (
               <TouchableOpacity
-                style={[styles.monthItem, isSelected && styles.monthItemActive]}
+                style={[styles.monthItem, { backgroundColor: colors.surface, borderColor: colors.border }, isSelected && styles.monthItemActive]}
                 onPress={() => setSelectedMonth(monthIndex)}
               >
                 {isSelected ? (
@@ -318,7 +322,7 @@ export const ExpenseListScreen: React.FC = () => {
                     </Text>
                   </LinearGradient>
                 ) : (
-                  <Text style={styles.monthText}>{item}</Text>
+                  <Text style={[styles.monthText, { color: colors.textMuted }]}>{item}</Text>
                 )}
               </TouchableOpacity>
             );
@@ -335,17 +339,17 @@ export const ExpenseListScreen: React.FC = () => {
       >
         {filteredExpenses.length === 0 ? (
           <View style={styles.emptyState}>
-            <View style={styles.emptyIcon}>
+            <View style={[styles.emptyIcon, { backgroundColor: colors.surface, borderColor: colors.border }]}>
               <MaterialIcons
                 name={hasActiveFilters ? 'filter-list-off' : 'receipt-long'}
                 size={48}
-                color={COLORS.textMuted}
+                color={colors.textMuted}
               />
             </View>
-            <Text style={styles.emptyTitle}>
+            <Text style={[styles.emptyTitle, { color: colors.textPrimary }]}>
               {hasActiveFilters ? 'No matches' : 'No expenses yet'}
             </Text>
-            <Text style={styles.emptySubtext}>
+            <Text style={[styles.emptySubtext, { color: colors.textMuted }]}>
               {hasActiveFilters
                 ? 'Try adjusting your filters'
                 : 'Tap the + button to add your first expense'}
@@ -356,9 +360,9 @@ export const ExpenseListScreen: React.FC = () => {
         ) : (
           grouped.map(([date, items]) => (
             <View key={date} style={styles.dateGroup}>
-              <View style={styles.dateHeader}>
-                <Text style={styles.dateText}>{formatGroupDate(date)}</Text>
-                <Text style={styles.dateTotalText}>
+              <View style={[styles.dateHeader, { borderBottomColor: colors.border }]}>
+                <Text style={[styles.dateText, { color: colors.textMuted }]}>{formatGroupDate(date)}</Text>
+                <Text style={[styles.dateTotalText, { color: colors.textSecondary }]}>
                   {formatCurrency(items.reduce((s, e) => s + e.amount, 0))}
                 </Text>
               </View>
@@ -376,12 +380,12 @@ export const ExpenseListScreen: React.FC = () => {
         presentationStyle="pageSheet"
         onRequestClose={() => setFilterOpen(false)}
       >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalHeader}>
+        <View style={[styles.modalContainer, { backgroundColor: colors.background }]}>
+          <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
             <TouchableOpacity onPress={() => setFilterOpen(false)}>
-              <Text style={styles.modalCancel}>Close</Text>
+              <Text style={[styles.modalCancel, { color: colors.textMuted }]}>Close</Text>
             </TouchableOpacity>
-            <Text style={styles.modalTitle}>Filters</Text>
+            <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>Filters</Text>
             <TouchableOpacity onPress={() => { clearFilters(); setFilterOpen(false); }}>
               <Text style={styles.modalReset}>Reset</Text>
             </TouchableOpacity>
@@ -389,7 +393,7 @@ export const ExpenseListScreen: React.FC = () => {
 
           <ScrollView contentContainerStyle={styles.modalContent}>
             {/* Sort */}
-            <Text style={styles.modalLabel}>Sort By</Text>
+            <Text style={[styles.modalLabel, { color: colors.textMuted }]}>Sort By</Text>
             <View style={styles.sortRow}>
               {([
                 ['date', 'Date', 'schedule'],
@@ -398,17 +402,18 @@ export const ExpenseListScreen: React.FC = () => {
               ] as [SortMode, string, string][]).map(([mode, label, icon]) => (
                 <TouchableOpacity
                   key={mode}
-                  style={[styles.sortOption, sortMode === mode && styles.sortOptionActive]}
+                  style={[styles.sortOption, { backgroundColor: colors.surface, borderColor: colors.border }, sortMode === mode && styles.sortOptionActive]}
                   onPress={() => setSortMode(mode)}
                 >
                   <MaterialIcons
                     name={icon as any}
                     size={18}
-                    color={sortMode === mode ? '#FFF' : COLORS.textMuted}
+                    color={sortMode === mode ? '#FFF' : colors.textMuted}
                   />
                   <Text
                     style={[
                       styles.sortOptionText,
+                      { color: colors.textMuted },
                       sortMode === mode && styles.sortOptionTextActive,
                     ]}
                   >
@@ -419,29 +424,31 @@ export const ExpenseListScreen: React.FC = () => {
             </View>
 
             {/* Category */}
-            <Text style={styles.modalLabel}>Categories</Text>
+            <Text style={[styles.modalLabel, { color: colors.textMuted }]}>Categories</Text>
             <View style={styles.categoryGrid}>
               {EXPENSE_CATEGORIES.map((cat) => {
                 const isSelected = selectedCategories.has(cat);
-                const color = CATEGORY_COLORS[cat];
+                const catColor = CATEGORY_COLORS[cat];
                 return (
                   <TouchableOpacity
                     key={cat}
                     style={[
                       styles.categoryChip,
-                      isSelected && { borderColor: color, backgroundColor: `${color}18` },
+                      { backgroundColor: colors.surface, borderColor: colors.border },
+                      isSelected && { borderColor: catColor, backgroundColor: `${catColor}18` },
                     ]}
                     onPress={() => toggleCategory(cat)}
                   >
                     <MaterialIcons
                       name={CATEGORY_ICONS[cat] as any}
                       size={16}
-                      color={isSelected ? color : COLORS.textMuted}
+                      color={isSelected ? catColor : colors.textMuted}
                     />
                     <Text
                       style={[
                         styles.categoryChipText,
-                        isSelected && { color },
+                        { color: colors.textSecondary },
+                        isSelected && { color: catColor },
                       ]}
                     >
                       {cat}
@@ -456,6 +463,7 @@ export const ExpenseListScreen: React.FC = () => {
                     key={cc.name}
                     style={[
                       styles.categoryChip,
+                      { backgroundColor: colors.surface, borderColor: colors.border },
                       isSelected && { borderColor: cc.color, backgroundColor: `${cc.color}18` },
                     ]}
                     onPress={() => toggleCategory(cc.name)}
@@ -463,11 +471,12 @@ export const ExpenseListScreen: React.FC = () => {
                     <MaterialIcons
                       name={cc.icon as any}
                       size={16}
-                      color={isSelected ? cc.color : COLORS.textMuted}
+                      color={isSelected ? cc.color : colors.textMuted}
                     />
                     <Text
                       style={[
                         styles.categoryChipText,
+                        { color: colors.textSecondary },
                         isSelected && { color: cc.color },
                       ]}
                     >
@@ -479,26 +488,26 @@ export const ExpenseListScreen: React.FC = () => {
             </View>
 
             {/* Amount Range */}
-            <Text style={styles.modalLabel}>Amount Range</Text>
+            <Text style={[styles.modalLabel, { color: colors.textMuted }]}>Amount Range</Text>
             <View style={styles.amountRow}>
-              <View style={styles.amountInputWrap}>
+              <View style={[styles.amountInputWrap, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                 <Text style={styles.amountPrefix}>{currencySymbol}</Text>
                 <TextInput
-                  style={styles.amountInput}
+                  style={[styles.amountInput, { color: colors.textPrimary }]}
                   placeholder="Min"
-                  placeholderTextColor={COLORS.textMuted}
+                  placeholderTextColor={colors.textMuted}
                   keyboardType="decimal-pad"
                   value={minAmount}
                   onChangeText={setMinAmount}
                 />
               </View>
-              <Text style={styles.amountDash}>—</Text>
-              <View style={styles.amountInputWrap}>
+              <Text style={[styles.amountDash, { color: colors.textMuted }]}>—</Text>
+              <View style={[styles.amountInputWrap, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                 <Text style={styles.amountPrefix}>{currencySymbol}</Text>
                 <TextInput
-                  style={styles.amountInput}
+                  style={[styles.amountInput, { color: colors.textPrimary }]}
                   placeholder="Max"
-                  placeholderTextColor={COLORS.textMuted}
+                  placeholderTextColor={colors.textMuted}
                   keyboardType="decimal-pad"
                   value={maxAmount}
                   onChangeText={setMaxAmount}
@@ -755,6 +764,17 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(108, 99, 255, 0.15)',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  tagPill: {
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: BORDER_RADIUS.round,
+    backgroundColor: 'rgba(108, 99, 255, 0.12)',
+  },
+  tagPillText: {
+    fontSize: 9,
+    color: COLORS.primary,
+    fontWeight: '700',
   },
   expenseRight: {
     alignItems: 'flex-end',

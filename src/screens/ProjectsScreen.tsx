@@ -3,16 +3,15 @@ import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
   TouchableOpacity,
-  TextInput,
   Animated,
   Modal,
+  TextInput,
+  Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import { GlassCard } from '../components/GlassCard';
 import { useExpenseStore } from '../store/useExpenseStore';
 import {
   COLORS,
@@ -23,7 +22,15 @@ import {
 } from '../constants/theme';
 import { useTheme } from '../contexts/ThemeContext';
 import { BUDGET_COLORS, Budget, BudgetTemplate } from '../types';
-import { formatCurrency } from '../utils/currency';
+import { useUndoStore } from '../store/useUndoStore';
+import { parseBudgetTransferCode } from '../utils/budgetSharing';
+import {
+  BudgetSummaryCard,
+  BudgetCard,
+  BudgetFormModal,
+  BudgetTemplatesModal,
+  DeleteConfirmModal,
+} from '../components/budget';
 
 export const ProjectsScreen: React.FC = () => {
   const { colors, isDark } = useTheme();
@@ -31,6 +38,7 @@ export const ProjectsScreen: React.FC = () => {
   const {
     budgets,
     addBudget,
+    addBudgetWithId,
     updateBudget,
     deleteBudget,
     getBudgetTotal,
@@ -39,7 +47,9 @@ export const ProjectsScreen: React.FC = () => {
     addBudgetTemplate,
     deleteBudgetTemplate,
     createBudgetFromTemplate,
+    importSharedBudget,
   } = useExpenseStore();
+  const showUndo = useUndoStore((s) => s.show);
 
   const [modalVisible, setModalVisible] = useState(false);
   const [editingBudget, setEditingBudget] = useState<Budget | null>(null);
@@ -52,6 +62,8 @@ export const ProjectsScreen: React.FC = () => {
   const [showTemplates, setShowTemplates] = useState(false);
   const [showDeleteTemplate, setShowDeleteTemplate] = useState(false);
   const [templateToDelete, setTemplateToDelete] = useState<BudgetTemplate | null>(null);
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [importCode, setImportCode] = useState('');
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
@@ -105,9 +117,35 @@ export const ProjectsScreen: React.FC = () => {
     setModalVisible(false);
   };
 
+  const handleSaveAsTemplate = () => {
+    if (!name.trim()) return;
+    addBudgetTemplate({
+      name: name.trim(),
+      description: description.trim(),
+      budget: budget ? parseFloat(budget) : undefined,
+      color: selectedColor,
+      icon: 'bookmark',
+    });
+    handleSave();
+  };
+
   const handleDelete = (b: Budget) => {
     setBudgetToDelete(b);
     setShowDeleteConfirm(true);
+  };
+
+  const handleConfirmDelete = () => {
+    if (budgetToDelete) {
+      const snapshot = budgetToDelete;
+      deleteBudget(snapshot.id);
+      showUndo({
+        message: `Budget "${snapshot.name}" deleted`,
+        entityType: 'budget',
+        restore: () => addBudgetWithId(snapshot),
+      });
+      setShowDeleteConfirm(false);
+      setBudgetToDelete(null);
+    }
   };
 
   const handleToggleStatus = (b: Budget) => {
@@ -115,140 +153,37 @@ export const ProjectsScreen: React.FC = () => {
     updateBudget(b.id, { status: newStatus });
   };
 
-  const renderBudgetCard = (b: Budget) => {
-    const spent = getBudgetTotal(b.id);
-    const pending = getBudgetPendingTotal(b.id);
-    const hasBudget = b.budget && b.budget > 0;
-    const progress = hasBudget ? spent / b.budget! : 0;
-    const isOverBudget = progress > 1;
-    const isCompleted = b.status === 'completed';
+  const handleCreateFromTemplate = (templateId: string) => {
+    createBudgetFromTemplate(templateId);
+    setShowTemplates(false);
+  };
 
-    return (
-      <TouchableOpacity
-        key={b.id}
-        activeOpacity={0.7}
-        onPress={() => navigation.navigate('BudgetDetail', { budgetId: b.id })}
-        onLongPress={() => handleDelete(b)}
-      >
-        <View style={[styles.budgetCard, isCompleted && styles.budgetCardCompleted]}>
-          {/* Color accent bar */}
-          <View style={[styles.budgetAccent, { backgroundColor: b.color }]} />
+  const handleDeleteTemplate = (t: BudgetTemplate) => {
+    setTemplateToDelete(t);
+    setShowDeleteTemplate(true);
+  };
 
-          <View style={styles.budgetContent}>
-            <View style={styles.budgetHeader}>
-              <View style={styles.budgetTitleRow}>
-                <View
-                  style={[styles.budgetDot, { backgroundColor: b.color }]}
-                />
-                <Text style={styles.budgetName} numberOfLines={1}>
-                  {b.name}
-                </Text>
-              </View>
-              <View style={styles.budgetActions}>
-                {isCompleted && (
-                  <View style={styles.completedBadge}>
-                    <MaterialIcons name="check-circle" size={14} color={COLORS.success} />
-                    <Text style={styles.completedText}>Done</Text>
-                  </View>
-                )}
-                <TouchableOpacity
-                  style={styles.budgetActionBtn}
-                  onPress={() => handleToggleStatus(b)}
-                >
-                  <MaterialIcons
-                    name={isCompleted ? 'replay' : 'check'}
-                    size={18}
-                    color={COLORS.textMuted}
-                  />
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.budgetActionBtn}
-                  onPress={() => openModal(b)}
-                >
-                  <MaterialIcons name="edit" size={16} color={COLORS.textMuted} />
-                </TouchableOpacity>
-              </View>
-            </View>
+  const handleConfirmDeleteTemplate = () => {
+    if (templateToDelete) {
+      deleteBudgetTemplate(templateToDelete.id);
+      setShowDeleteTemplate(false);
+      setTemplateToDelete(null);
+    }
+  };
 
-            {b.description ? (
-              <Text style={styles.budgetDesc} numberOfLines={1}>
-                {b.description}
-              </Text>
-            ) : null}
-
-            <View style={styles.budgetStats}>
-              <View>
-                <Text style={styles.budgetStatLabel}>Spent</Text>
-                <Text
-                  style={[
-                    styles.budgetStatValue,
-                    { color: isOverBudget ? COLORS.danger : b.color },
-                  ]}
-                >
-                  {formatCurrency(spent)}
-                </Text>
-              </View>
-              {pending > 0 && (
-                <View>
-                  <Text style={styles.budgetStatLabel}>Pending</Text>
-                  <Text style={[styles.budgetStatValue, { color: COLORS.warning }]}>
-                    {formatCurrency(pending)}
-                  </Text>
-                </View>
-              )}
-              {hasBudget && (
-                <View style={styles.budgetStatRight}>
-                  <Text style={styles.budgetStatLabel}>Budget</Text>
-                  <Text style={styles.budgetStatValue}>
-                    {formatCurrency(b.budget!)}
-                  </Text>
-                </View>
-              )}
-            </View>
-
-            {hasBudget && (
-              <View style={styles.progressContainer}>
-                <View style={styles.progressBar}>
-                  <LinearGradient
-                    colors={
-                      isOverBudget
-                        ? ['#FF3D71', '#FF6B8A']
-                        : progress > 0.75
-                        ? ['#FFAA00', '#FFBB33']
-                        : [b.color, `${b.color}CC`]
-                    }
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                    style={[
-                      styles.progressFill,
-                      { width: `${Math.min(progress * 100, 100)}%` },
-                    ]}
-                  />
-                  {pending > 0 && hasBudget && (
-                    <View
-                      style={[
-                        styles.progressPending,
-                        {
-                          width: `${Math.min((pending / b.budget!) * 100, 100 - Math.min(progress * 100, 100))}%`,
-                          backgroundColor: `${COLORS.warning}40`,
-                        },
-                      ]}
-                    />
-                  )}
-                </View>
-                <Text
-                  style={[
-                    styles.progressText,
-                    isOverBudget && { color: COLORS.danger },
-                  ]}
-                >
-                  {Math.round(progress * 100)}%
-                </Text>
-              </View>
-            )}
-          </View>
-        </View>
-      </TouchableOpacity>
+  const handleImportBudget = () => {
+    if (!importCode.trim()) return;
+    const result = parseBudgetTransferCode(importCode.trim());
+    if (!result.valid) {
+      Alert.alert('Import Failed', result.error);
+      return;
+    }
+    importSharedBudget(result.data.budget, result.data.expenses);
+    setShowImportModal(false);
+    setImportCode('');
+    Alert.alert(
+      'Budget Imported',
+      `"${result.data.budget.name}" with ${result.data.expenses.length} expense${result.data.expenses.length !== 1 ? 's' : ''} has been added.`
     );
   };
 
@@ -256,14 +191,20 @@ export const ProjectsScreen: React.FC = () => {
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Budgets</Text>
+        <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Budgets</Text>
         <View style={styles.headerActions}>
+          <TouchableOpacity
+            style={[styles.templateBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
+            onPress={() => setShowImportModal(true)}
+          >
+            <MaterialIcons name="file-download" size={20} color={colors.primary} />
+          </TouchableOpacity>
           {budgetTemplates.length > 0 && (
             <TouchableOpacity
-              style={styles.templateBtn}
+              style={[styles.templateBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
               onPress={() => setShowTemplates(true)}
             >
-              <MaterialIcons name="bookmark" size={20} color={COLORS.primary} />
+              <MaterialIcons name="bookmark" size={20} color={colors.primary} />
             </TouchableOpacity>
           )}
           <TouchableOpacity style={styles.addBtn} onPress={() => openModal()}>
@@ -283,48 +224,56 @@ export const ProjectsScreen: React.FC = () => {
         contentContainerStyle={styles.scrollContent}
       >
         {/* Summary Card */}
-        <GlassCard style={styles.summaryCard} glowColor="#6C63FF" intensity="medium">
-          <View style={styles.summaryRow}>
-            <View style={styles.summaryIcon}>
-              <MaterialIcons name="account-balance-wallet" size={26} color="#6C63FF" />
-            </View>
-            <View style={styles.summaryInfo}>
-              <Text style={styles.summaryLabel}>Active Budgets</Text>
-              <Text style={styles.summaryCount}>{activeBudgets.length}</Text>
-            </View>
-            <View style={styles.summaryDivider} />
-            <View style={styles.summaryInfo}>
-              <Text style={styles.summaryLabel}>Total Spent</Text>
-              <Text style={[styles.summaryCount, { color: COLORS.accent }]}>
-                {formatCurrency(totalAcrossBudgets)}
-              </Text>
-            </View>
-          </View>
-        </GlassCard>
+        <BudgetSummaryCard
+          activeBudgets={activeBudgets}
+          totalAcrossBudgets={totalAcrossBudgets}
+        />
 
         {/* Active Budgets */}
         {activeBudgets.length > 0 && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Active</Text>
-            {activeBudgets.map(renderBudgetCard)}
+            <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>Active</Text>
+            {activeBudgets.map((b) => (
+              <BudgetCard
+                key={b.id}
+                budget={b}
+                getBudgetTotal={getBudgetTotal}
+                getBudgetPendingTotal={getBudgetPendingTotal}
+                onPress={(budget) => navigation.navigate('BudgetDetail', { budgetId: budget.id })}
+                onEdit={(budget) => openModal(budget)}
+                onDelete={handleDelete}
+                onToggleStatus={handleToggleStatus}
+              />
+            ))}
           </View>
         )}
 
         {/* Completed Budgets */}
         {completedBudgets.length > 0 && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Completed</Text>
-            {completedBudgets.map(renderBudgetCard)}
+            <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>Completed</Text>
+            {completedBudgets.map((b) => (
+              <BudgetCard
+                key={b.id}
+                budget={b}
+                getBudgetTotal={getBudgetTotal}
+                getBudgetPendingTotal={getBudgetPendingTotal}
+                onPress={(budget) => navigation.navigate('BudgetDetail', { budgetId: budget.id })}
+                onEdit={(budget) => openModal(budget)}
+                onDelete={handleDelete}
+                onToggleStatus={handleToggleStatus}
+              />
+            ))}
           </View>
         )}
 
         {budgets.length === 0 && (
           <View style={styles.emptyState}>
-            <View style={styles.emptyIcon}>
-              <MaterialIcons name="account-balance-wallet" size={48} color={COLORS.textMuted} />
+            <View style={[styles.emptyIcon, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <MaterialIcons name="account-balance-wallet" size={48} color={colors.textMuted} />
             </View>
-            <Text style={styles.emptyTitle}>No budgets yet</Text>
-            <Text style={styles.emptySubtext}>
+            <Text style={[styles.emptyTitle, { color: colors.textPrimary }]}>No budgets yet</Text>
+            <Text style={[styles.emptySubtext, { color: colors.textMuted }]}>
               Create a budget to track spending on specific goals like a trip, wedding, or renovation.
             </Text>
             <TouchableOpacity
@@ -346,245 +295,98 @@ export const ProjectsScreen: React.FC = () => {
       </Animated.ScrollView>
 
       {/* Add/Edit Modal */}
-      <Modal
+      <BudgetFormModal
         visible={modalVisible}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={() => setModalVisible(false)}
-      >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalHeader}>
-            <TouchableOpacity onPress={() => setModalVisible(false)}>
-              <Text style={styles.modalCancel}>Cancel</Text>
-            </TouchableOpacity>
-            <Text style={styles.modalTitle}>
-              {editingBudget ? 'Edit Budget' : 'New Budget'}
-            </Text>
-            <TouchableOpacity onPress={handleSave}>
-              <Text style={styles.modalSave}>Save</Text>
-            </TouchableOpacity>
-          </View>
-
-          <ScrollView contentContainerStyle={styles.modalContent}>
-            {/* Name */}
-            <Text style={styles.modalLabel}>Budget Name</Text>
-            <TextInput
-              style={styles.modalInput}
-              value={name}
-              onChangeText={setName}
-              placeholder="e.g., Summer Trip, New Kitchen"
-              placeholderTextColor={COLORS.textMuted}
-              autoFocus
-            />
-
-            {/* Description */}
-            <Text style={styles.modalLabel}>Description</Text>
-            <TextInput
-              style={[styles.modalInput, styles.modalInputMultiline]}
-              value={description}
-              onChangeText={setDescription}
-              placeholder="What is this budget for?"
-              placeholderTextColor={COLORS.textMuted}
-              multiline
-              numberOfLines={3}
-            />
-
-            {/* Budget */}
-            <Text style={styles.modalLabel}>Spending Limit (optional)</Text>
-            <View style={styles.modalBudgetRow}>
-              <Text style={styles.modalCurrency}>$</Text>
-              <TextInput
-                style={styles.modalBudgetInput}
-                value={budget}
-                onChangeText={setBudget}
-                placeholder="0.00"
-                placeholderTextColor={COLORS.textMuted}
-                keyboardType="decimal-pad"
-              />
-            </View>
-
-            {/* Color */}
-            <Text style={styles.modalLabel}>Color</Text>
-            <View style={styles.colorGrid}>
-              {BUDGET_COLORS.map((color) => (
-                <TouchableOpacity
-                  key={color}
-                  style={[
-                    styles.colorItem,
-                    { backgroundColor: color },
-                    selectedColor === color && styles.colorItemSelected,
-                  ]}
-                  onPress={() => setSelectedColor(color)}
-                >
-                  {selectedColor === color && (
-                    <MaterialIcons name="check" size={18} color="#FFF" />
-                  )}
-                </TouchableOpacity>
-              ))}
-            </View>
-
-            {/* Save as Template */}
-            {!editingBudget && name.trim() !== '' && (
-              <TouchableOpacity
-                style={styles.saveTemplateBtn}
-                onPress={() => {
-                  if (!name.trim()) return;
-                  addBudgetTemplate({
-                    name: name.trim(),
-                    description: description.trim(),
-                    budget: budget ? parseFloat(budget) : undefined,
-                    color: selectedColor,
-                    icon: 'bookmark',
-                  });
-                  handleSave();
-                }}
-              >
-                <MaterialIcons name="bookmark-add" size={20} color={COLORS.primary} />
-                <Text style={styles.saveTemplateBtnText}>Save & Create as Template</Text>
-              </TouchableOpacity>
-            )}
-          </ScrollView>
-        </View>
-      </Modal>
+        onClose={() => setModalVisible(false)}
+        onSave={handleSave}
+        onSaveAsTemplate={handleSaveAsTemplate}
+        editingBudget={editingBudget}
+        name={name}
+        onNameChange={setName}
+        description={description}
+        onDescriptionChange={setDescription}
+        budget={budget}
+        onBudgetChange={setBudget}
+        selectedColor={selectedColor}
+        onColorChange={setSelectedColor}
+      />
 
       {/* Delete Confirmation Modal */}
-      <Modal
+      <DeleteConfirmModal
         visible={showDeleteConfirm}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowDeleteConfirm(false)}
-      >
-        <TouchableOpacity
-          style={styles.deleteConfirmOverlay}
-          activeOpacity={1}
-          onPress={() => setShowDeleteConfirm(false)}
-        >
-          <View style={styles.deleteConfirmContainer}>
-            <Text style={styles.deleteConfirmTitle}>Delete Budget</Text>
-            <Text style={styles.deleteConfirmMessage}>
-              Delete "{budgetToDelete?.name}"? Expenses linked to it will be unlinked but not deleted.
-            </Text>
-            <View style={styles.deleteConfirmButtons}>
-              <TouchableOpacity
-                style={styles.deleteConfirmCancelBtn}
-                onPress={() => setShowDeleteConfirm(false)}
-              >
-                <Text style={styles.deleteConfirmCancelText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.deleteConfirmDeleteBtn}
-                onPress={() => {
-                  if (budgetToDelete) {
-                    deleteBudget(budgetToDelete.id);
-                    setShowDeleteConfirm(false);
-                    setBudgetToDelete(null);
-                  }
-                }}
-              >
-                <Text style={styles.deleteConfirmDeleteText}>Delete</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </TouchableOpacity>
-      </Modal>
+        title="Delete Budget"
+        message={`Delete "${budgetToDelete?.name}"? Expenses linked to it will be unlinked but not deleted.`}
+        onCancel={() => setShowDeleteConfirm(false)}
+        onConfirm={handleConfirmDelete}
+      />
 
       {/* Templates Modal */}
-      <Modal
+      <BudgetTemplatesModal
         visible={showTemplates}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={() => setShowTemplates(false)}
-      >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalHeader}>
-            <TouchableOpacity onPress={() => setShowTemplates(false)}>
-              <Text style={styles.modalCancel}>Close</Text>
-            </TouchableOpacity>
-            <Text style={styles.modalTitle}>Budget Templates</Text>
-            <View style={{ width: 50 }} />
-          </View>
-
-          <ScrollView contentContainerStyle={styles.modalContent}>
-            <Text style={styles.templateSubtitle}>
-              Tap a template to create a budget from it. Long-press to delete.
-            </Text>
-            {budgetTemplates.map((t) => (
-              <TouchableOpacity
-                key={t.id}
-                style={styles.templateCard}
-                activeOpacity={0.7}
-                onPress={() => {
-                  createBudgetFromTemplate(t.id);
-                  setShowTemplates(false);
-                }}
-                onLongPress={() => {
-                  setTemplateToDelete(t);
-                  setShowDeleteTemplate(true);
-                }}
-              >
-                <View style={[styles.templateDot, { backgroundColor: t.color }]} />
-                <View style={styles.templateInfo}>
-                  <Text style={styles.templateName}>{t.name}</Text>
-                  {t.description ? (
-                    <Text style={styles.templateDesc} numberOfLines={1}>{t.description}</Text>
-                  ) : null}
-                </View>
-                {t.budget ? (
-                  <Text style={[styles.templateBudget, { color: t.color }]}>
-                    {formatCurrency(t.budget)}
-                  </Text>
-                ) : null}
-                <MaterialIcons name="add-circle-outline" size={22} color={COLORS.textMuted} style={{ marginLeft: 8 }} />
-              </TouchableOpacity>
-            ))}
-
-            {budgetTemplates.length === 0 && (
-              <View style={styles.templateEmpty}>
-                <MaterialIcons name="bookmark-border" size={40} color={COLORS.textMuted} />
-                <Text style={styles.templateEmptyText}>
-                  No templates yet. Create a budget and choose "Save & Create as Template".
-                </Text>
-              </View>
-            )}
-          </ScrollView>
-        </View>
-      </Modal>
+        onClose={() => setShowTemplates(false)}
+        templates={budgetTemplates}
+        onCreateFromTemplate={handleCreateFromTemplate}
+        onDeleteTemplate={handleDeleteTemplate}
+      />
 
       {/* Delete Template Confirmation */}
-      <Modal
+      <DeleteConfirmModal
         visible={showDeleteTemplate}
+        title="Delete Template"
+        message={`Delete template "${templateToDelete?.name}"?`}
+        onCancel={() => setShowDeleteTemplate(false)}
+        onConfirm={handleConfirmDeleteTemplate}
+      />
+
+      {/* Import Shared Budget Modal */}
+      <Modal
+        visible={showImportModal}
         transparent
         animationType="fade"
-        onRequestClose={() => setShowDeleteTemplate(false)}
+        onRequestClose={() => { setShowImportModal(false); setImportCode(''); }}
       >
         <TouchableOpacity
-          style={styles.deleteConfirmOverlay}
+          style={styles.importOverlay}
           activeOpacity={1}
-          onPress={() => setShowDeleteTemplate(false)}
+          onPress={() => { setShowImportModal(false); setImportCode(''); }}
         >
-          <View style={styles.deleteConfirmContainer}>
-            <Text style={styles.deleteConfirmTitle}>Delete Template</Text>
-            <Text style={styles.deleteConfirmMessage}>
-              Delete template "{templateToDelete?.name}"?
+          <View style={[styles.importContainer, { backgroundColor: colors.surface }]} onStartShouldSetResponder={() => true}>
+            <Text style={[styles.importTitle, { color: colors.textPrimary }]}>Import Shared Budget</Text>
+            <Text style={[styles.importSubtext, { color: colors.textSecondary }]}>
+              Paste a transfer code from someone who shared a budget with you.
             </Text>
-            <View style={styles.deleteConfirmButtons}>
+            <TextInput
+              style={[styles.importInput, { backgroundColor: colors.background, borderColor: colors.border, color: colors.textPrimary }]}
+              value={importCode}
+              onChangeText={setImportCode}
+              placeholder="Paste transfer code here..."
+              placeholderTextColor={colors.textMuted}
+              multiline
+              numberOfLines={4}
+              autoCorrect={false}
+            />
+            <View style={styles.importActions}>
               <TouchableOpacity
-                style={styles.deleteConfirmCancelBtn}
-                onPress={() => setShowDeleteTemplate(false)}
+                style={[styles.importCancelBtn, { backgroundColor: colors.background }]}
+                onPress={() => { setShowImportModal(false); setImportCode(''); }}
               >
-                <Text style={styles.deleteConfirmCancelText}>Cancel</Text>
+                <Text style={[styles.importCancelText, { color: colors.textSecondary }]}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={styles.deleteConfirmDeleteBtn}
-                onPress={() => {
-                  if (templateToDelete) {
-                    deleteBudgetTemplate(templateToDelete.id);
-                    setShowDeleteTemplate(false);
-                    setTemplateToDelete(null);
-                  }
-                }}
+                style={[
+                  styles.importConfirmBtn,
+                  !importCode.trim() && { opacity: 0.5 },
+                ]}
+                onPress={handleImportBudget}
+                disabled={!importCode.trim()}
               >
-                <Text style={styles.deleteConfirmDeleteText}>Delete</Text>
+                <LinearGradient
+                  colors={['#6C63FF', '#BB8FCE']}
+                  style={styles.importConfirmGradient}
+                >
+                  <MaterialIcons name="file-download" size={16} color="#FFF" />
+                  <Text style={styles.importConfirmText}>Import</Text>
+                </LinearGradient>
               </TouchableOpacity>
             </View>
           </View>
@@ -643,48 +445,6 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: SPACING.lg,
   },
-
-  // Summary
-  summaryCard: {
-    marginBottom: SPACING.lg,
-  },
-  summaryRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  summaryIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 14,
-    backgroundColor: 'rgba(108, 99, 255, 0.12)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: SPACING.md,
-  },
-  summaryInfo: {
-    flex: 1,
-  },
-  summaryLabel: {
-    fontSize: FONT_SIZE.xs,
-    color: COLORS.textMuted,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: 2,
-  },
-  summaryCount: {
-    fontSize: FONT_SIZE.xl,
-    color: COLORS.textPrimary,
-    fontWeight: '800',
-  },
-  summaryDivider: {
-    width: 1,
-    height: 36,
-    backgroundColor: COLORS.border,
-    marginHorizontal: SPACING.md,
-  },
-
-  // Section
   section: {
     marginBottom: SPACING.lg,
   },
@@ -696,131 +456,6 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     marginBottom: SPACING.md,
   },
-
-  // Budget Card
-  budgetCard: {
-    flexDirection: 'row',
-    backgroundColor: 'rgba(22, 33, 62, 0.7)',
-    borderRadius: BORDER_RADIUS.lg,
-    marginBottom: SPACING.sm,
-    borderWidth: 1,
-    borderColor: 'rgba(108, 99, 255, 0.08)',
-    overflow: 'hidden',
-  },
-  budgetCardCompleted: {
-    opacity: 0.6,
-  },
-  budgetAccent: {
-    width: 4,
-  },
-  budgetContent: {
-    flex: 1,
-    padding: SPACING.md,
-  },
-  budgetHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  budgetTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-    gap: SPACING.sm,
-  },
-  budgetDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-  },
-  budgetName: {
-    fontSize: FONT_SIZE.lg,
-    color: COLORS.textPrimary,
-    fontWeight: '700',
-    flex: 1,
-  },
-  budgetActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  budgetActionBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  completedBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0, 214, 143, 0.1)',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: BORDER_RADIUS.round,
-    gap: 4,
-    marginRight: 4,
-  },
-  completedText: {
-    fontSize: FONT_SIZE.xs,
-    color: COLORS.success,
-    fontWeight: '600',
-  },
-  budgetDesc: {
-    fontSize: FONT_SIZE.sm,
-    color: COLORS.textMuted,
-    fontWeight: '500',
-    marginBottom: SPACING.sm,
-  },
-  budgetStats: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: SPACING.sm,
-  },
-  budgetStatRight: {
-    alignItems: 'flex-end',
-  },
-  budgetStatLabel: {
-    fontSize: FONT_SIZE.xs,
-    color: COLORS.textMuted,
-    fontWeight: '600',
-    marginBottom: 2,
-  },
-  budgetStatValue: {
-    fontSize: FONT_SIZE.lg,
-    color: COLORS.textPrimary,
-    fontWeight: '700',
-  },
-  progressContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.sm,
-  },
-  progressBar: {
-    flex: 1,
-    height: 6,
-    backgroundColor: 'rgba(108, 99, 255, 0.1)',
-    borderRadius: 3,
-    overflow: 'hidden',
-    flexDirection: 'row',
-  },
-  progressFill: {
-    height: '100%',
-    borderRadius: 3,
-  },
-  progressPending: {
-    height: '100%',
-  },
-  progressText: {
-    fontSize: FONT_SIZE.sm,
-    color: COLORS.textSecondary,
-    fontWeight: '700',
-    width: 40,
-    textAlign: 'right',
-  },
-
-  // Empty State
   emptyState: {
     alignItems: 'center',
     paddingTop: 60,
@@ -869,224 +504,74 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
 
-  // Modal
-  modalContainer: {
-    flex: 1,
-    backgroundColor: COLORS.background,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingTop: 16,
-    paddingHorizontal: SPACING.lg,
-    paddingBottom: SPACING.md,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
-  },
-  modalCancel: {
-    fontSize: FONT_SIZE.md,
-    color: COLORS.textMuted,
-    fontWeight: '600',
-  },
-  modalTitle: {
-    fontSize: FONT_SIZE.lg,
-    color: COLORS.textPrimary,
-    fontWeight: '700',
-  },
-  modalSave: {
-    fontSize: FONT_SIZE.md,
-    color: COLORS.primary,
-    fontWeight: '700',
-  },
-  modalContent: {
-    padding: SPACING.lg,
-  },
-  modalLabel: {
-    fontSize: FONT_SIZE.sm,
-    color: COLORS.textMuted,
-    fontWeight: '700',
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-    marginBottom: SPACING.sm,
-    marginTop: SPACING.lg,
-  },
-  modalInput: {
-    backgroundColor: COLORS.surface,
-    borderRadius: BORDER_RADIUS.md,
-    padding: SPACING.md,
-    fontSize: FONT_SIZE.md,
-    color: COLORS.textPrimary,
-    fontWeight: '500',
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  modalInputMultiline: {
-    minHeight: 80,
-    textAlignVertical: 'top',
-  },
-  modalBudgetRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.surface,
-    borderRadius: BORDER_RADIUS.md,
-    padding: SPACING.md,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  modalCurrency: {
-    fontSize: FONT_SIZE.xl,
-    color: COLORS.primary,
-    fontWeight: '700',
-    marginRight: SPACING.sm,
-  },
-  modalBudgetInput: {
-    flex: 1,
-    fontSize: FONT_SIZE.xl,
-    color: COLORS.textPrimary,
-    fontWeight: '700',
-  },
-  colorGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: SPACING.md,
-  },
-  colorItem: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  colorItemSelected: {
-    borderWidth: 3,
-    borderColor: 'rgba(255, 255, 255, 0.5)',
-  },
-
-  // Delete Confirmation Modal
-  deleteConfirmOverlay: {
+  // Import Modal
+  importOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  deleteConfirmContainer: {
+  importContainer: {
     backgroundColor: COLORS.surface,
     borderRadius: BORDER_RADIUS.lg,
     padding: SPACING.xl,
-    width: '80%',
-    maxWidth: 340,
+    width: '90%',
+    maxWidth: 400,
   },
-  deleteConfirmTitle: {
+  importTitle: {
     fontSize: FONT_SIZE.lg,
     fontWeight: '700',
     color: COLORS.textPrimary,
     marginBottom: SPACING.sm,
   },
-  deleteConfirmMessage: {
+  importSubtext: {
     fontSize: FONT_SIZE.md,
     color: COLORS.textSecondary,
-    marginBottom: SPACING.xl,
+    marginBottom: SPACING.lg,
+    lineHeight: 20,
   },
-  deleteConfirmButtons: {
+  importInput: {
+    backgroundColor: COLORS.background,
+    borderRadius: BORDER_RADIUS.md,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    padding: SPACING.md,
+    fontSize: FONT_SIZE.sm,
+    color: COLORS.textPrimary,
+    minHeight: 100,
+    textAlignVertical: 'top',
+    marginBottom: SPACING.lg,
+  },
+  importActions: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
     gap: SPACING.md,
   },
-  deleteConfirmCancelBtn: {
+  importCancelBtn: {
     paddingVertical: SPACING.sm,
     paddingHorizontal: SPACING.lg,
     borderRadius: BORDER_RADIUS.md,
     backgroundColor: COLORS.background,
   },
-  deleteConfirmCancelText: {
+  importCancelText: {
     fontSize: FONT_SIZE.md,
     fontWeight: '600',
     color: COLORS.textSecondary,
   },
-  deleteConfirmDeleteBtn: {
+  importConfirmBtn: {
+    borderRadius: BORDER_RADIUS.md,
+    overflow: 'hidden',
+  },
+  importConfirmGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
     paddingVertical: SPACING.sm,
     paddingHorizontal: SPACING.lg,
-    borderRadius: BORDER_RADIUS.md,
-    backgroundColor: 'rgba(255, 61, 113, 0.12)',
   },
-  deleteConfirmDeleteText: {
-    fontSize: FONT_SIZE.md,
-    fontWeight: '600',
-    color: COLORS.danger,
-  },
-
-  // Save as Template button
-  saveTemplateBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: SPACING.sm,
-    marginTop: SPACING.xl,
-    paddingVertical: SPACING.md,
-    borderRadius: BORDER_RADIUS.md,
-    borderWidth: 1,
-    borderColor: COLORS.primary,
-    backgroundColor: 'rgba(108, 99, 255, 0.08)',
-  },
-  saveTemplateBtnText: {
-    fontSize: FONT_SIZE.md,
-    color: COLORS.primary,
-    fontWeight: '700',
-  },
-
-  // Templates
-  templateSubtitle: {
-    fontSize: FONT_SIZE.sm,
-    color: COLORS.textMuted,
-    fontWeight: '500',
-    marginBottom: SPACING.lg,
-  },
-  templateCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.surface,
-    borderRadius: BORDER_RADIUS.md,
-    padding: SPACING.md,
-    marginBottom: SPACING.sm,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  templateDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    marginRight: SPACING.md,
-  },
-  templateInfo: {
-    flex: 1,
-  },
-  templateName: {
-    fontSize: FONT_SIZE.md,
-    color: COLORS.textPrimary,
-    fontWeight: '700',
-  },
-  templateDesc: {
-    fontSize: FONT_SIZE.sm,
-    color: COLORS.textMuted,
-    fontWeight: '500',
-    marginTop: 2,
-  },
-  templateBudget: {
+  importConfirmText: {
     fontSize: FONT_SIZE.md,
     fontWeight: '700',
-  },
-  templateEmpty: {
-    alignItems: 'center',
-    paddingVertical: SPACING.xxl,
-  },
-  templateEmptyText: {
-    fontSize: FONT_SIZE.md,
-    color: COLORS.textMuted,
-    fontWeight: '500',
-    textAlign: 'center',
-    maxWidth: 260,
-    marginTop: SPACING.md,
-    lineHeight: 22,
+    color: '#FFF',
   },
 });

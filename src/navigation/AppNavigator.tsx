@@ -19,6 +19,9 @@ import { SettingsScreen } from '../screens/SettingsScreen';
 import { DataTransferScreen } from '../screens/DataTransferScreen';
 import { ReorderCategoriesScreen } from '../screens/ReorderCategoriesScreen';
 import { CategoryBudgetsScreen } from '../screens/CategoryBudgetsScreen';
+import { DashboardCustomizeScreen } from '../screens/DashboardCustomizeScreen';
+import { AssistantScreen } from '../screens/AssistantScreen';
+import { IncomeListScreen } from '../screens/IncomeListScreen';
 import { useTheme } from '../contexts/ThemeContext';
 
 const Tab = createBottomTabNavigator();
@@ -68,6 +71,15 @@ function TabNavigator() {
         options={{
           tabBarIcon: ({ color, size }) => (
             <MaterialIcons name="receipt-long" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="Income"
+        component={IncomeListScreen}
+        options={{
+          tabBarIcon: ({ color, size }) => (
+            <MaterialIcons name="account-balance" size={size} color={color} />
           ),
         }}
       />
@@ -169,6 +181,28 @@ export function AppNavigator() {
           component={CategoryBudgetsScreen}
           options={{
             animation: 'slide_from_right',
+          }}
+        />
+        <Stack.Screen
+          name="DashboardCustomize"
+          component={DashboardCustomizeScreen}
+          options={{
+            animation: 'slide_from_right',
+          }}
+        />
+        <Stack.Screen
+          name="IncomeList"
+          component={IncomeListScreen}
+          options={{
+            animation: 'slide_from_right',
+          }}
+        />
+        <Stack.Screen
+          name="Assistant"
+          component={AssistantScreen}
+          options={{
+            presentation: 'modal',
+            animation: 'slide_from_bottom',
           }}
         />
       </Stack.Navigator>

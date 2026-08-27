@@ -7,6 +7,9 @@ import {
   TouchableOpacity,
   Animated,
   Modal,
+  TextInput,
+  Clipboard,
+  Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -23,6 +26,11 @@ import {
 } from '../constants/theme';
 import { useTheme } from '../contexts/ThemeContext';
 import { formatCurrency } from '../utils/currency';
+import {
+  shareBudgetViaFile,
+  generateBudgetTransferCode,
+  parseBudgetTransferCode,
+} from '../utils/budgetSharing';
 
 const formatDate = (dateStr: string) => {
   const date = new Date(dateStr);
@@ -56,6 +64,9 @@ export const ProjectDetailScreen: React.FC = () => {
 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [expenseToDelete, setExpenseToDelete] = useState<string | null>(null);
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [transferCode, setTransferCode] = useState('');
+  const [codeCopied, setCodeCopied] = useState(false);
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const heroScale = useRef(new Animated.Value(0.95)).current;
@@ -78,10 +89,10 @@ export const ProjectDetailScreen: React.FC = () => {
 
   if (!budget) {
     return (
-      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
-        <Text style={styles.emptyTitle}>Budget not found</Text>
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background }]}>
+        <Text style={[styles.emptyTitle, { color: colors.textPrimary }]}>Budget not found</Text>
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={{ color: COLORS.primary, marginTop: 16 }}>Go Back</Text>
+          <Text style={{ color: colors.primary, marginTop: 16 }}>Go Back</Text>
         </TouchableOpacity>
       </View>
     );
@@ -116,28 +127,36 @@ export const ProjectDetailScreen: React.FC = () => {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity
-          style={styles.backBtn}
+          style={[styles.backBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
           onPress={() => navigation.goBack()}
         >
-          <MaterialIcons name="arrow-back" size={24} color={COLORS.textPrimary} />
+          <MaterialIcons name="arrow-back" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle} numberOfLines={1}>
+        <Text style={[styles.headerTitle, { color: colors.textPrimary }]} numberOfLines={1}>
           {budget.name}
         </Text>
-        <TouchableOpacity
-          style={styles.backBtn}
-          onPress={() =>
-            updateBudget(budget.id, {
-              status: budget.status === 'active' ? 'completed' : 'active',
-            })
-          }
-        >
-          <MaterialIcons
-            name={budget.status === 'active' ? 'check-circle-outline' : 'replay'}
-            size={24}
-            color={budget.status === 'active' ? COLORS.success : COLORS.primary}
-          />
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row', gap: SPACING.xs }}>
+          <TouchableOpacity
+            style={[styles.backBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
+            onPress={() => setShowShareModal(true)}
+          >
+            <MaterialIcons name="share" size={20} color={colors.primary} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.backBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
+            onPress={() =>
+              updateBudget(budget.id, {
+                status: budget.status === 'active' ? 'completed' : 'active',
+              })
+            }
+          >
+            <MaterialIcons
+              name={budget.status === 'active' ? 'check-circle-outline' : 'replay'}
+              size={24}
+              color={budget.status === 'active' ? COLORS.success : COLORS.primary}
+            />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ScrollView
@@ -218,30 +237,30 @@ export const ProjectDetailScreen: React.FC = () => {
         </Animated.View>
 
         {/* Stats Row */}
-        <Animated.View style={[styles.statsRow, { opacity: fadeAnim }]}>
-          <GlassCard style={styles.statCard} intensity="low">
-            <Text style={styles.statValue}>{expenses.length}</Text>
-            <Text style={styles.statLabel}>Expenses</Text>
-          </GlassCard>
-          <GlassCard style={styles.statCard} intensity="low">
-            <Text style={styles.statValue}>{sortedCategories.length}</Text>
-            <Text style={styles.statLabel}>Categories</Text>
-          </GlassCard>
-          <GlassCard style={styles.statCard} intensity="low">
-            <Text style={styles.statValue}>
+        <Animated.View style={[styles.statsChipRow, { opacity: fadeAnim }]}>
+          <View style={[styles.statChip, { backgroundColor: `${colors.primary}15` }]}>
+            <Text style={[styles.statChipValue, { color: colors.primary }]}>{expenses.length}</Text>
+            <Text style={[styles.statChipLabel, { color: colors.textSecondary }]}> Expenses</Text>
+          </View>
+          <View style={[styles.statChip, { backgroundColor: `${colors.primary}15` }]}>
+            <Text style={[styles.statChipValue, { color: colors.primary }]}>{sortedCategories.length}</Text>
+            <Text style={[styles.statChipLabel, { color: colors.textSecondary }]}> Categories</Text>
+          </View>
+          <View style={[styles.statChip, { backgroundColor: `${colors.primary}15` }]}>
+            <Text style={[styles.statChipValue, { color: colors.primary }]}>
               {completedExpenses.length > 0
                 ? formatCurrency(totalSpent / completedExpenses.length)
                 : '$0'}
             </Text>
-            <Text style={styles.statLabel}>Average</Text>
-          </GlassCard>
+            <Text style={[styles.statChipLabel, { color: colors.textSecondary }]}> Avg</Text>
+          </View>
         </Animated.View>
 
         {/* Category Breakdown */}
         {sortedCategories.length > 0 && (
           <Animated.View style={{ opacity: fadeAnim }}>
             <GlassCard style={styles.categoriesCard} intensity="low">
-              <Text style={styles.sectionTitle}>Spending Breakdown</Text>
+              <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Spending Breakdown</Text>
               {sortedCategories.map(([category, amount]) => {
                 const percentage = totalSpent > 0 ? (amount / totalSpent) * 100 : 0;
                 return (
@@ -249,12 +268,12 @@ export const ProjectDetailScreen: React.FC = () => {
                     <CategoryIcon category={category} size={36} />
                     <View style={styles.categoryInfo}>
                       <View style={styles.categoryHeader}>
-                        <Text style={styles.categoryName}>{category}</Text>
-                        <Text style={styles.categoryAmount}>
+                        <Text style={[styles.categoryName, { color: colors.textPrimary }]}>{category}</Text>
+                        <Text style={[styles.categoryAmount, { color: colors.textSecondary }]}>
                           {formatCurrency(amount)}
                         </Text>
                       </View>
-                      <View style={styles.categoryBarBg}>
+                      <View style={[styles.categoryBarBg, { backgroundColor: `${colors.textMuted}15` }]}>
                         <View
                           style={[
                             styles.categoryBarFill,
@@ -266,7 +285,7 @@ export const ProjectDetailScreen: React.FC = () => {
                         />
                       </View>
                     </View>
-                    <Text style={styles.categoryPercent}>
+                    <Text style={[styles.categoryPercent, { color: colors.textMuted }]}>
                       {Math.round(percentage)}%
                     </Text>
                   </View>
@@ -280,7 +299,7 @@ export const ProjectDetailScreen: React.FC = () => {
         {pendingExpenses.length > 0 && (
           <Animated.View style={{ opacity: fadeAnim }}>
             <View style={styles.expenseHeader}>
-              <Text style={styles.sectionTitle}>Pending Expenses</Text>
+              <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Pending Expenses</Text>
               <View style={styles.pendingBadge}>
                 <MaterialIcons name="schedule" size={14} color={COLORS.warning} />
                 <Text style={styles.pendingBadgeText}>{pendingExpenses.length}</Text>
@@ -288,7 +307,7 @@ export const ProjectDetailScreen: React.FC = () => {
             </View>
 
             {pendingExpenses.map((expense) => (
-              <View key={expense.id} style={styles.pendingExpenseItem}>
+              <View key={expense.id} style={[styles.pendingExpenseItem, { backgroundColor: colors.surface, borderColor: `${colors.primary}20` }]}>
                 <TouchableOpacity
                   style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: SPACING.md }}
                   activeOpacity={0.7}
@@ -302,10 +321,10 @@ export const ProjectDetailScreen: React.FC = () => {
                 >
                   <CategoryIcon category={expense.category} size={42} />
                   <View style={styles.expenseInfo}>
-                    <Text style={styles.expenseDesc}>
+                    <Text style={[styles.expenseDesc, { color: colors.textPrimary }]}>
                       {expense.description || expense.category}
                     </Text>
-                    <Text style={styles.expenseDate}>{formatDate(expense.date)}</Text>
+                    <Text style={[styles.expenseDate, { color: colors.textMuted }]}>{formatDate(expense.date)}</Text>
                   </View>
                   <Text style={[styles.expenseAmount, { color: COLORS.warning }]}>
                     {formatCurrency(expense.amount)}
@@ -325,7 +344,7 @@ export const ProjectDetailScreen: React.FC = () => {
         {/* Committed Expenses List */}
         <Animated.View style={{ opacity: fadeAnim }}>
           <View style={styles.expenseHeader}>
-            <Text style={styles.sectionTitle}>
+            <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
               {pendingExpenses.length > 0 ? 'Committed Expenses' : 'All Expenses'}
             </Text>
             <TouchableOpacity
@@ -346,14 +365,14 @@ export const ProjectDetailScreen: React.FC = () => {
 
           {completedExpenses.length === 0 && pendingExpenses.length === 0 ? (
             <View style={styles.emptyState}>
-              <MaterialIcons name="receipt-long" size={40} color={COLORS.textMuted} />
-              <Text style={styles.emptySubtext}>
+              <MaterialIcons name="receipt-long" size={40} color={colors.textMuted} />
+              <Text style={[styles.emptySubtext, { color: colors.textMuted }]}>
                 No expenses yet. Tap "Add" to link an expense to this budget.
               </Text>
             </View>
           ) : completedExpenses.length === 0 ? (
             <View style={styles.emptyState}>
-              <Text style={styles.emptySubtext}>
+              <Text style={[styles.emptySubtext, { color: colors.textMuted }]}>
                 No committed expenses yet. Complete pending expenses above to deduct them from the budget.
               </Text>
             </View>
@@ -361,7 +380,7 @@ export const ProjectDetailScreen: React.FC = () => {
             completedExpenses.map((expense) => (
               <TouchableOpacity
                 key={expense.id}
-                style={styles.expenseItem}
+                style={[styles.expenseItem, { backgroundColor: colors.surface, borderColor: colors.border }]}
                 activeOpacity={0.7}
                 onPress={() =>
                   navigation.navigate('AddExpense', {
@@ -373,12 +392,12 @@ export const ProjectDetailScreen: React.FC = () => {
               >
                 <CategoryIcon category={expense.category} size={42} />
                 <View style={styles.expenseInfo}>
-                  <Text style={styles.expenseDesc}>
+                  <Text style={[styles.expenseDesc, { color: colors.textPrimary }]}>
                     {expense.description || expense.category}
                   </Text>
-                  <Text style={styles.expenseDate}>{formatDate(expense.date)}</Text>
+                  <Text style={[styles.expenseDate, { color: colors.textMuted }]}>{formatDate(expense.date)}</Text>
                 </View>
-                <Text style={styles.expenseAmount}>
+                <Text style={[styles.expenseAmount, { color: colors.textPrimary }]}>
                   {formatCurrency(expense.amount)}
                 </Text>
               </TouchableOpacity>
@@ -390,9 +409,9 @@ export const ProjectDetailScreen: React.FC = () => {
         {budget.description ? (
           <Animated.View style={{ opacity: fadeAnim }}>
             <GlassCard style={styles.descCard} intensity="low">
-              <Text style={styles.descLabel}>About this budget</Text>
-              <Text style={styles.descText}>{budget.description}</Text>
-              <Text style={styles.descDate}>
+              <Text style={[styles.descLabel, { color: colors.textMuted }]}>About this budget</Text>
+              <Text style={[styles.descText, { color: colors.textSecondary }]}>{budget.description}</Text>
+              <Text style={[styles.descDate, { color: colors.textMuted }]}>
                 Created {formatDate(budget.createdAt)}
               </Text>
             </GlassCard>
@@ -418,6 +437,105 @@ export const ProjectDetailScreen: React.FC = () => {
         </LinearGradient>
       </TouchableOpacity>
 
+      {/* Share Budget Modal */}
+      <Modal
+        visible={showShareModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => { setShowShareModal(false); setTransferCode(''); setCodeCopied(false); }}
+      >
+        <TouchableOpacity
+          style={styles.deleteConfirmOverlay}
+          activeOpacity={1}
+          onPress={() => { setShowShareModal(false); setTransferCode(''); setCodeCopied(false); }}
+        >
+          <View style={[styles.shareContainer, { backgroundColor: colors.surface }]} onStartShouldSetResponder={() => true}>
+            <Text style={[styles.deleteConfirmTitle, { color: colors.textPrimary }]}>Share Budget</Text>
+            <Text style={[styles.deleteConfirmMessage, { marginBottom: SPACING.md, color: colors.textSecondary }]}>
+              Share "{budget.name}" with {expenses.length} expense{expenses.length !== 1 ? 's' : ''}.
+              The recipient can import it into their WhereDidItGo app.
+            </Text>
+
+            {/* Share as File */}
+            <TouchableOpacity
+              style={[styles.shareOptionBtn, { backgroundColor: colors.background, borderColor: colors.border }]}
+              onPress={async () => {
+                await shareBudgetViaFile(budget, expenses);
+              }}
+            >
+              <MaterialIcons name="file-upload" size={20} color={colors.primary} />
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.shareOptionTitle, { color: colors.textPrimary }]}>Share as File</Text>
+                <Text style={[styles.shareOptionSub, { color: colors.textMuted }]}>Send via AirDrop, Messages, Email, etc.</Text>
+              </View>
+              <MaterialIcons name="chevron-right" size={20} color={colors.textMuted} />
+            </TouchableOpacity>
+
+            {/* Generate Transfer Code */}
+            <TouchableOpacity
+              style={[styles.shareOptionBtn, { backgroundColor: colors.background, borderColor: colors.border }]}
+              onPress={() => {
+                const code = generateBudgetTransferCode(budget, expenses);
+                setTransferCode(code);
+                setCodeCopied(false);
+              }}
+            >
+              <MaterialIcons name="qr-code" size={20} color={colors.primary} />
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.shareOptionTitle, { color: colors.textPrimary }]}>Generate Transfer Code</Text>
+                <Text style={[styles.shareOptionSub, { color: colors.textMuted }]}>Copy & paste to share via any chat</Text>
+              </View>
+              <MaterialIcons name="chevron-right" size={20} color={colors.textMuted} />
+            </TouchableOpacity>
+
+            {/* Transfer Code Display */}
+            {transferCode ? (
+              <View style={[styles.transferCodeBox, { backgroundColor: colors.background, borderColor: colors.border }]}>
+                <Text style={[styles.transferCodeText, { color: colors.textSecondary }]} numberOfLines={3} ellipsizeMode="tail">
+                  {transferCode}
+                </Text>
+                <TouchableOpacity
+                  style={[
+                    styles.copyBtn,
+                    { backgroundColor: `${colors.primary}18` },
+                    codeCopied && { backgroundColor: 'rgba(0, 214, 143, 0.12)' },
+                  ]}
+                  onPress={() => {
+                    if (Platform.OS === 'web') {
+                      navigator.clipboard?.writeText(transferCode);
+                    } else {
+                      Clipboard.setString(transferCode);
+                    }
+                    setCodeCopied(true);
+                  }}
+                >
+                  <MaterialIcons
+                    name={codeCopied ? 'check' : 'content-copy'}
+                    size={16}
+                    color={codeCopied ? COLORS.success : COLORS.primary}
+                  />
+                  <Text
+                    style={[
+                      styles.copyBtnText,
+                      { color: codeCopied ? COLORS.success : COLORS.primary },
+                    ]}
+                  >
+                    {codeCopied ? 'Copied!' : 'Copy'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            ) : null}
+
+            <TouchableOpacity
+              style={[styles.deleteConfirmCancelBtn, { alignSelf: 'center', marginTop: SPACING.md, backgroundColor: colors.background }]}
+              onPress={() => { setShowShareModal(false); setTransferCode(''); setCodeCopied(false); }}
+            >
+              <Text style={[styles.deleteConfirmCancelText, { color: colors.textSecondary }]}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
       {/* Delete Confirmation Modal */}
       <Modal
         visible={showDeleteConfirm}
@@ -430,15 +548,15 @@ export const ProjectDetailScreen: React.FC = () => {
           activeOpacity={1}
           onPress={() => setShowDeleteConfirm(false)}
         >
-          <View style={styles.deleteConfirmContainer}>
-            <Text style={styles.deleteConfirmTitle}>Remove Expense</Text>
-            <Text style={styles.deleteConfirmMessage}>Remove this expense from the budget?</Text>
+          <View style={[styles.deleteConfirmContainer, { backgroundColor: colors.surface }]}>
+            <Text style={[styles.deleteConfirmTitle, { color: colors.textPrimary }]}>Remove Expense</Text>
+            <Text style={[styles.deleteConfirmMessage, { color: colors.textSecondary }]}>Remove this expense from the budget?</Text>
             <View style={styles.deleteConfirmButtons}>
               <TouchableOpacity
-                style={styles.deleteConfirmCancelBtn}
+                style={[styles.deleteConfirmCancelBtn, { backgroundColor: colors.background }]}
                 onPress={() => setShowDeleteConfirm(false)}
               >
-                <Text style={styles.deleteConfirmCancelText}>Cancel</Text>
+                <Text style={[styles.deleteConfirmCancelText, { color: colors.textSecondary }]}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.deleteConfirmDeleteBtn}
@@ -580,28 +698,26 @@ const styles = StyleSheet.create({
   },
 
   // Stats
-  statsRow: {
+  statsChipRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: SPACING.sm,
     marginBottom: SPACING.lg,
   },
-  statCard: {
-    flex: 1,
+  statChip: {
+    flexDirection: 'row',
     alignItems: 'center',
-    padding: SPACING.md,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 20,
   },
-  statValue: {
-    fontSize: FONT_SIZE.lg,
-    color: COLORS.textPrimary,
+  statChipValue: {
+    fontSize: FONT_SIZE.sm,
     fontWeight: '800',
-    marginBottom: 2,
   },
-  statLabel: {
+  statChipLabel: {
     fontSize: FONT_SIZE.xs,
-    color: COLORS.textMuted,
     fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
   },
 
   // Categories
@@ -853,5 +969,66 @@ const styles = StyleSheet.create({
     fontSize: FONT_SIZE.md,
     fontWeight: '600',
     color: COLORS.danger,
+  },
+
+  // Share Modal
+  shareContainer: {
+    backgroundColor: COLORS.surface,
+    borderRadius: BORDER_RADIUS.lg,
+    padding: SPACING.xl,
+    width: '90%',
+    maxWidth: 400,
+  },
+  shareOptionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.md,
+    paddingVertical: SPACING.md,
+    paddingHorizontal: SPACING.md,
+    borderRadius: BORDER_RADIUS.md,
+    backgroundColor: COLORS.background,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    marginBottom: SPACING.sm,
+  },
+  shareOptionTitle: {
+    fontSize: FONT_SIZE.md,
+    fontWeight: '600',
+    color: COLORS.textPrimary,
+  },
+  shareOptionSub: {
+    fontSize: FONT_SIZE.xs,
+    color: COLORS.textMuted,
+    fontWeight: '500',
+    marginTop: 1,
+  },
+  transferCodeBox: {
+    backgroundColor: COLORS.background,
+    borderRadius: BORDER_RADIUS.md,
+    padding: SPACING.md,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    marginTop: SPACING.sm,
+  },
+  transferCodeText: {
+    fontSize: FONT_SIZE.xs,
+    color: COLORS.textSecondary,
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+    lineHeight: 16,
+    marginBottom: SPACING.sm,
+  },
+  copyBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-end',
+    gap: 4,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: 6,
+    borderRadius: BORDER_RADIUS.round,
+    backgroundColor: 'rgba(108, 99, 255, 0.1)',
+  },
+  copyBtnText: {
+    fontSize: FONT_SIZE.sm,
+    fontWeight: '600',
   },
 });

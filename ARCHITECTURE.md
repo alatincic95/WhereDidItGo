@@ -1,7 +1,7 @@
 # WhereDidItGo — Codebase Architecture Reference
 
 > Quick-reference for development. Avoids re-exploring the full codebase each session.
-> **Last updated:** 2026-04-10
+> **Last updated:** 2026-08-27
 
 ---
 
@@ -9,42 +9,103 @@
 
 ```
 src/
+├── assistant/
+│   ├── config.ts                 # API key storage, model config (Gemini)
+│   ├── groqClient.ts             # AI chat client
+│   ├── systemPrompt.ts           # Assistant system prompt with financial context
+│   ├── toolExecutor.ts           # Executes assistant tool calls against store
+│   ├── tools.ts                  # Tool definitions for assistant
+│   └── types.ts                  # Assistant-specific types
 ├── components/
 │   ├── AnimatedNumber.tsx        # Animated numeric display
 │   ├── CategoryIcon.tsx          # Dynamic icon resolver (custom + default categories)
-│   └── GlassCard.tsx             # Reusable glass-morphism card (theme-aware)
+│   ├── GlassCard.tsx             # Reusable glass-morphism card (theme-aware)
+│   ├── UndoSnackbar.tsx          # Bottom snackbar for undo-after-delete
+│   ├── assistant/
+│   │   ├── ChatInputBar.tsx      # Chat text input with send button
+│   │   ├── ChatMessageBubble.tsx # Message bubble (user/assistant)
+│   │   └── SuggestedPrompts.tsx  # Quick prompt suggestions
+│   ├── budget/
+│   │   ├── BudgetCard.tsx        # Budget list item card
+│   │   ├── BudgetFormModal.tsx   # Create/edit budget modal
+│   │   ├── BudgetSummaryCard.tsx # Budget overview summary
+│   │   ├── BudgetTemplatesModal.tsx # Template browser modal
+│   │   ├── DeleteConfirmModal.tsx # Reusable delete confirmation
+│   │   └── index.ts
+│   ├── dashboard/
+│   │   ├── BudgetUsageCard.tsx   # Budget usage progress bars
+│   │   ├── DashboardFAB.tsx      # Expandable FAB (expense/income)
+│   │   ├── DashboardModals.tsx   # Income edit, currency picker modals
+│   │   ├── helpers.ts            # Dashboard utility functions
+│   │   ├── HeroBalanceCard.tsx   # Main balance card with gradient
+│   │   ├── QuickActionsRow.tsx   # Trends, Goals, Income quick-action cards
+│   │   ├── QuickAddBar.tsx       # Natural language expense input
+│   │   ├── RecentTransactions.tsx # Recent expense/income list
+│   │   ├── SummaryCards.tsx      # Monthly expense/income summary
+│   │   ├── TopCategoriesCard.tsx # Category breakdown with bars
+│   │   ├── ViewModeToggle.tsx    # Monthly/Overall toggle
+│   │   └── index.ts
+│   └── expense/
+│       ├── AmountInput.tsx       # Numeric amount input with currency
+│       ├── BudgetSelector.tsx    # Budget linking dropdown
+│       ├── CategoryGrid.tsx      # Category selection grid
+│       ├── CurrencySelector.tsx  # Foreign currency picker
+│       ├── DatePickerSection.tsx # Date picker
+│       ├── ExpenseModals.tsx     # Delete confirm, convert-to-recurring modals
+│       ├── ReceiptSection.tsx    # Receipt photo picker, preview, OCR scan
+│       ├── SplitTransactions.tsx # Split expense across categories
+│       ├── TagsInput.tsx         # Tag/label input with autocomplete
+│       └── index.ts
 ├── constants/
 │   └── theme.ts                  # DARK_COLORS, LIGHT_COLORS, COLORS (dark fallback),
 │                                 # SPACING, FONT_SIZE, BORDER_RADIUS, SHADOWS
 ├── contexts/
 │   └── ThemeContext.tsx           # ThemeProvider + useTheme() hook
 ├── navigation/
-│   └── AppNavigator.tsx          # Bottom tabs + native stack navigator
+│   └── AppNavigator.tsx          # Bottom tabs (5) + native stack navigator
 ├── screens/
-│   ├── DashboardScreen.tsx       # Main dashboard, FAB, settings modals (~1700 lines)
+│   ├── DashboardScreen.tsx       # Main dashboard, FAB, settings modals
 │   ├── ExpenseListScreen.tsx     # Filterable expense list
+│   ├── IncomeListScreen.tsx      # Filterable income list (green accent)
 │   ├── AddExpenseScreen.tsx      # Modal: add/edit expense
-│   ├── AddIncomeScreen.tsx       # Modal: add/edit income
+│   ├── AddIncomeScreen.tsx       # Modal: add/edit income (with convert-to-recurring)
 │   ├── FixedExpensesScreen.tsx   # Recurring expenses management
 │   ├── ProjectsScreen.tsx        # Budget list (UI says "Budgets")
 │   ├── ProjectDetailScreen.tsx   # Budget detail view
 │   ├── NotificationsScreen.tsx   # Smart alerts
 │   ├── TrendsScreen.tsx          # Charts & monthly history
 │   ├── SavingsGoalsScreen.tsx    # Savings goals
-│   ├── CategoryBudgetsScreen.tsx  # Per-category monthly spending limits
-│   ├── SettingsScreen.tsx        # Theme toggle, biometric lock, category budgets, data transfer
+│   ├── CategoryBudgetsScreen.tsx # Per-category monthly spending limits
+│   ├── ReorderCategoriesScreen.tsx # Drag/button reorder of expense categories
+│   ├── DashboardCustomizeScreen.tsx # Reorder/hide dashboard cards
+│   ├── AssistantScreen.tsx       # AI chat assistant
+│   ├── SettingsScreen.tsx        # Theme, biometric, API key, links to sub-screens
 │   ├── DataTransferScreen.tsx    # Cloud backup, file transfer, transfer codes
 │   └── OnboardingScreen.tsx      # First-launch walkthrough (5 steps)
 ├── store/
-│   ├── useExpenseStore.ts        # Main Zustand store (~670 lines, persisted)
-│   └── useNotificationStore.ts   # Notification store (~170 lines)
+│   ├── useExpenseStore.ts        # Main Zustand store (composed from slices, persisted)
+│   ├── useNotificationStore.ts   # Notification store
+│   ├── useUndoStore.ts           # Transient undo entry for snackbar (not persisted)
+│   ├── utils.ts                  # uuidv4 helper
+│   └── slices/
+│       ├── expenseSlice.ts       # Expense CRUD, tags, splits, convert-to-recurring
+│       ├── incomeSlice.ts        # Income CRUD, convert-to-recurring
+│       ├── budgetSlice.ts        # Budget CRUD, templates, sharing
+│       ├── savingsSlice.ts       # Savings goals, auto-contributions
+│       ├── settingsSlice.ts      # Settings, categories, exchange rates, dashboard config
+│       └── computedSlice.ts      # Derived data: balances, totals, YoY, category status
 ├── types/
 │   └── index.ts                  # All TypeScript interfaces, enums, constants
-│                                 # (Expense, Budget, Income, categories, colors, etc.)
 └── utils/
     ├── currency.ts               # CURRENCY_OPTIONS (14), formatCurrency, getCurrencySymbol
     ├── exportData.ts             # CSV export, JSON backup/restore, BackupData interface
-    └── cloudBackup.ts            # Cloud share, transfer code generation/parsing
+    ├── cloudBackup.ts            # Cloud share, transfer code generation/parsing
+    ├── recurringProcessor.ts     # computeDueDates, generateRecurringId for auto-processing
+    ├── localNotifications.ts     # expo-notifications wrapper: permissions, scheduling
+    ├── nlParser.ts               # Natural language expense parser
+    ├── categorySuggester.ts      # Smart category suggestion engine (history + keywords)
+    ├── budgetSharing.ts          # Budget sharing: build/validate/share/import
+    └── receiptOcr.ts             # Gemini Vision API receipt scanning
 
 Root files:
 ├── App.tsx                       # Entry: ThemeProvider → BiometricGate → OnboardingGate → AppNavigator
@@ -59,40 +120,38 @@ Root files:
 
 ## Zustand Store Shape (`useExpenseStore`)
 
-### State Fields
-| Field | Type | Persisted | Notes |
-|-------|------|-----------|-------|
-| `expenses` | `Expense[]` | Yes | Main expense list |
-| `fixedExpenses` | `FixedExpense[]` | Yes | Monthly recurring |
-| `incomes` | `Income[]` | Yes | One-time income |
-| `fixedIncomes` | `FixedIncome[]` | Yes | Recurring income |
-| `budgets` | `Budget[]` | Yes | Formerly "projects" |
-| `customCategories` | `CustomCategory[]` | Yes | User-created categories |
-| `exchangeRates` | `ExchangeRate[]` | Yes | Multi-currency support |
-| `savingsGoals` | `SavingsGoal[]` | Yes | Savings targets |
-| `budgetTemplates` | `BudgetTemplate[]` | Yes | Reusable budget configs |
-| `categoryBudgets` | `CategoryBudget[]` | Yes | Per-category monthly limits |
-| `initialBalance` | `number` | Yes | Starting balance |
-| `monthlyIncome` | `number` | Yes | Base monthly income |
-| `currencySymbol` | `string` | Yes | e.g. "$", "€" |
-| `themeMode` | `ThemeMode` | Yes | `'dark'` or `'light'` |
-| `biometricEnabled` | `boolean` | Yes | Face ID / fingerprint lock |
-| `onboardingCompleted` | `boolean` | Yes | First-launch gate |
+The store uses a **slice pattern** — each domain slice is defined in `src/store/slices/` and composed in `useExpenseStore.ts`. Type: `StoreState = ExpenseSlice & IncomeSlice & BudgetSlice & SavingsSlice & SettingsSlice & ComputedSlice`.
 
-### Key Actions (grouped)
-- **Expenses:** add, update, delete, markCompleted
-- **Fixed Expenses:** add, update, delete
-- **Income:** add, update, delete
-- **Fixed Income:** add, update, delete, getTotal
-- **Budgets:** add, update, delete, getExpenses, getTotal, getPendingTotal
-- **Custom Categories:** add, delete
-- **Exchange Rates:** add, update, delete, convertToBase
-- **Savings Goals:** add, update, delete, addFunds
-- **Budget Templates:** add, delete, createFromTemplate
-- **Category Budgets:** set, remove, toggle, getStatus
-- **Settings:** setInitialBalance, setMonthlyIncome, setCurrencySymbol, setThemeMode, setBiometricEnabled, setOnboardingCompleted
-- **Computed:** getMonthlyExpenses, getMonthlyTotal, getMonthlyBalance, getOverallBalance, getCategoryTotals, etc.
-- **Backup:** getBackupState, restoreFromBackup
+### State Fields
+| Field | Type | Persisted | Slice | Notes |
+|-------|------|-----------|-------|-------|
+| `expenses` | `Expense[]` | Yes | expense | Main expense list |
+| `fixedExpenses` | `FixedExpense[]` | Yes | expense | Recurring expenses |
+| `incomes` | `Income[]` | Yes | income | One-time income |
+| `fixedIncomes` | `FixedIncome[]` | Yes | income | Recurring income |
+| `budgets` | `Budget[]` | Yes | budget | Formerly "projects" |
+| `customCategories` | `CustomCategory[]` | Yes | settings | User-created categories |
+| `exchangeRates` | `ExchangeRate[]` | Yes | settings | Multi-currency support |
+| `savingsGoals` | `SavingsGoal[]` | Yes | savings | Savings targets |
+| `budgetTemplates` | `BudgetTemplate[]` | Yes | budget | Reusable budget configs |
+| `categoryOrder` | `string[]` | Yes | settings | Persisted category display order |
+| `categoryBudgets` | `CategoryBudget[]` | Yes | settings | Per-category monthly limits |
+| `dashboardCards` | `DashboardCardConfig[]` | Yes | settings | Dashboard card order and visibility |
+| `initialBalance` | `number` | Yes | settings | Starting balance |
+| `monthlyIncome` | `number` | Yes | settings | Base monthly income |
+| `currencySymbol` | `string` | Yes | settings | e.g. "$", "€" |
+| `themeMode` | `ThemeMode` | Yes | settings | `'dark'` or `'light'` |
+| `biometricEnabled` | `boolean` | Yes | settings | Face ID / fingerprint lock |
+| `pushNotificationsEnabled` | `boolean` | Yes | settings | Local push notification toggle |
+| `onboardingCompleted` | `boolean` | Yes | settings | First-launch gate |
+
+### Key Actions (grouped by slice)
+- **ExpenseSlice:** add, addWithId (restore), update, delete, markCompleted, convertExpenseToRecurring, getAllTags
+- **IncomeSlice:** add, addWithId (restore), update, delete, convertIncomeToRecurring, getMonthlyIncomes, getMonthlyExtraIncome, getTotalExtraIncomeAllTime, addFixedIncome, updateFixedIncome, deleteFixedIncome, getFixedIncomesTotal
+- **BudgetSlice:** add, addWithId (restore), update, delete, getExpenses, getTotal, getPendingTotal, importSharedBudget, addTemplate, deleteTemplate, createFromTemplate
+- **SavingsSlice:** add, addWithId (restore), update, delete, addFunds, processAutoContributions
+- **SettingsSlice:** setInitialBalance, setMonthlyIncome, setCurrencySymbol, setThemeMode, setBiometricEnabled, setPushNotificationsEnabled, setOnboardingCompleted, addCustomCategory, deleteCustomCategory, setCategoryOrder, setDashboardCards, resetDashboardCards, addExchangeRate, updateExchangeRate, deleteExchangeRate, convertToBase, setCategoryBudget, removeCategoryBudget, toggleCategoryBudget, getCategoryBudgetStatus
+- **ComputedSlice:** getMonthlyExpenses, getMonthlyTotal, getMonthlyBalance, getOverallBalance, getCategoryTotals (split-aware), getYearOverYearData, processRecurringExpenses, getBackupState, restoreFromBackup
 
 ### Persistence
 - Storage: AsyncStorage via `zustand/middleware/persist`
@@ -106,11 +165,12 @@ Root files:
 
 ```
 Stack.Navigator (headerShown: false)
-├── Main (TabNavigator)
-│   ├── Dashboard → DashboardScreen
-│   ├── Expenses → ExpenseListScreen
-│   ├── Budgets  → ProjectsScreen
-│   └── Fixed    → FixedExpensesScreen (label: "Recurring")
+├── Main (TabNavigator — 5 tabs)
+│   ├── Dashboard  → DashboardScreen
+│   ├── Expenses   → ExpenseListScreen
+│   ├── Income     → IncomeListScreen
+│   ├── Budgets    → ProjectsScreen
+│   └── Fixed      → FixedExpensesScreen (label: "Recurring")
 ├── AddExpense     (modal, slide_from_bottom)
 ├── AddIncome      (modal, slide_from_bottom)
 ├── BudgetDetail   (slide_from_right)
@@ -119,7 +179,11 @@ Stack.Navigator (headerShown: false)
 ├── SavingsGoals   (slide_from_right)
 ├── Settings       (slide_from_right)
 ├── DataTransfer   (slide_from_right)
-└── CategoryBudgets (slide_from_right)
+├── ReorderCategories (slide_from_right)
+├── CategoryBudgets (slide_from_right)
+├── DashboardCustomize (slide_from_right)
+├── Assistant      (slide_from_right)
+└── IncomeList     (slide_from_right, also accessible from quick actions)
 ```
 
 ---
@@ -163,6 +227,7 @@ ThemeProvider
 | expo-sharing | ~14.0.8 | Native share sheet |
 | expo-document-picker | ~14.0.8 | File picker |
 | expo-image-picker | ~17.0.10 | Receipt photos |
+| expo-notifications | ~0.31.2 | Local push notifications |
 | formik + yup | ^2.4.9 / ^1.7.1 | Form validation |
 
 ---
@@ -170,16 +235,18 @@ ThemeProvider
 ## Data Types Quick Reference
 
 ```typescript
-Expense:       { id, amount, category, description, date, isFixed, projectId?, isPending?, currency?, receiptUri? }
-FixedExpense:  { id, amount, category, description, frequency? }
+Expense:       { id, amount, category, description, date, isFixed, projectId?, isPending?, currency?, receiptUri?, tags?, splits? }
+ExpenseSplit:  { category, amount, projectId? }
+FixedExpense:  { id, amount, category, description, frequency?, startDate?, lastProcessedDate? }
 Income:        { id, amount, source: IncomeSource, description, date }
-FixedIncome:   { id, amount, source, description, frequency? }
+FixedIncome:   { id, amount, source, description, frequency?, startDate?, lastProcessedDate? }
 Budget:        { id, name, description, budget?, color, status, createdAt }
 CustomCategory:{ name, icon, color }
 SavingsGoal:   { id, name, targetAmount, currentAmount, deadline?, color, icon, createdAt }
 BudgetTemplate:{ id, name, description, budget?, color, icon, createdAt }
 CategoryBudget:{ category, monthlyLimit, enabled }
 ExchangeRate:  { from, rate }
+DashboardCardConfig: { id: DashboardCardId, visible }
 ```
 
 **Categories:** Food, Transport, Housing, Entertainment, Shopping, Health, Education, Bills, Subscriptions, Other

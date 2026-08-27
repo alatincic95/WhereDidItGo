@@ -2,13 +2,14 @@
 
 > A living to-do list of every feature in the app. Checked items are implemented. Unchecked items at the bottom are proposed/missing.
 >
-> **Last updated:** 2026-04-13
+> **Last updated:** 2026-08-27
 
 ---
 
 ## ✅ Implemented
 
 ### Expense Management
+
 - [x] Add new expense (amount, category, description, date)
 - [x] Edit existing expense
 - [x] Delete expense (with confirmation modal)
@@ -23,15 +24,28 @@
 - [x] Replace or remove attached receipts
 - [x] Full-screen receipt viewer on tap
 - [x] Per-expense currency tagging (multi-currency)
+- [x] Tags / labels on expenses — cross-cutting labels (e.g. "Vacation", "Tax-deductible") with autocomplete from previously-used tags
+- [x] Split transactions — distribute a single expense across multiple categories and/or budgets (sum validated against amount)
+- [x] Convert one-time expense to recurring — promote an existing expense to a fixed/recurring entry from the edit screen
 
 ### Income Management
+
 - [x] Add one-time income entries
 - [x] Edit / delete income (with confirmation)
 - [x] 7 income sources (Gift, Bonus, Freelance, Sale, Refund, Investment, Other)
 - [x] Icons and colors per income source
 - [x] Income reflected in monthly and overall balance
+- [x] Dedicated Income tab in bottom navigation (filterable list)
+- [x] Search by description/source
+- [x] Filter by source (multi-select), amount range (min/max)
+- [x] Sort by date, highest amount, lowest amount
+- [x] Month selector with "All" option
+- [x] Convert one-time income to recurring from edit screen (frequency picker)
+- [x] Delete income button with confirmation in edit screen
+- [x] Green accent branding (#00D68F) for income screens
 
 ### Recurring (Fixed) Expenses & Income
+
 - [x] Add recurring expense with configurable frequency
 - [x] Edit / delete recurring expense (with confirmation)
 - [x] Add recurring income with configurable frequency
@@ -44,6 +58,7 @@
 - [x] Dedicated Recurring tab with expenses/income toggle
 
 ### Expense Filtering (ExpenseListScreen)
+
 - [x] Search by description/category
 - [x] Filter by category (multi-select, incl. custom)
 - [x] Filter by amount range (min/max)
@@ -53,6 +68,7 @@
 - [x] Flat list rendering preserves sort order when sorting by amount
 
 ### Balance Tracking
+
 - [x] Monthly balance = income + fixed income + extra income − expenses − fixed expenses
 - [x] Overall balance = initial balance + accumulated monthly balances
 - [x] View mode toggle (Monthly / Overall) on Dashboard
@@ -62,6 +78,7 @@
 - [x] Hero card with gradient backgrounds
 
 ### Budgets (formerly "Projects")
+
 - [x] Create budget (name, description, optional limit, color)
 - [x] Edit / delete budget (with confirmation)
 - [x] 12 color options
@@ -76,12 +93,14 @@
 - [x] Category breakdown within budget detail
 
 ### Budget Templates
+
 - [x] Save budget config as reusable template
 - [x] Template list via bookmark icon in Budgets header
 - [x] One-tap budget creation from template
 - [x] Long-press template to delete (with confirmation)
 
 ### Category Budgets (Per-Category Monthly Limits)
+
 - [x] Set monthly spending limit per category
 - [x] Edit / remove limits
 - [x] Enable / disable per-category limits (via Switch)
@@ -94,6 +113,7 @@
 - [x] Includes one-time + recurring expenses with currency conversion
 
 ### Custom Categories
+
 - [x] Create custom category (name, icon, color)
 - [x] 24 Material Icons options
 - [x] 12 color options
@@ -103,12 +123,14 @@
 - [x] Delete custom category (removes from category order too)
 
 ### Category Ordering
+
 - [x] Reorder categories via drag or button controls
 - [x] Dedicated ReorderCategories screen (Settings link)
 - [x] Persisted order used across forms and lists
 - [x] New categories append after saved order
 
 ### Multi-Currency Support
+
 - [x] 14 base currency options
 - [x] Configurable base currency symbol
 - [x] Exchange rates (base-per-foreign)
@@ -118,6 +140,7 @@
 - [x] Currency picker modal on Dashboard
 
 ### Trends & Analytics
+
 - [x] Bar chart visualization of last 6 months (custom-built, no chart library)
 - [x] Toggle views: Expenses / Income / Both
 - [x] Month-over-month spending % change
@@ -126,6 +149,7 @@
 - [x] Accessible from Dashboard quick-action card
 
 ### Savings Goals
+
 - [x] Create savings goal (name, target, optional deadline, color, icon)
 - [x] Edit goal
 - [x] Delete goal (with confirmation)
@@ -135,8 +159,10 @@
 - [x] Progress bar with percentage
 - [x] Summary card showing total saved vs. total target
 - [x] Accessible from Dashboard quick-action card
+- [x] Optional monthly auto-contributions (idempotent per month via `lastAutoContribution`, capped at remaining target)
 
 ### Smart Notifications
+
 - [x] Monthly budget warnings (75%, 90%, exceeded)
 - [x] Project budget alerts (80%, 100%)
 - [x] Category budget alerts (80%, exceeded)
@@ -149,6 +175,7 @@
 - [x] Deduplication via `type-relatedId` key
 
 ### Dashboard
+
 - [x] Greeting with time-of-day
 - [x] Monthly / Overall view toggle
 - [x] Hero balance card (gradient, sparkles, metadata)
@@ -164,6 +191,7 @@
 - [x] Inline monthly income edit modal
 
 ### Theme System (Dark / Light Mode)
+
 - [x] Full light and dark palettes (`DARK_COLORS`, `LIGHT_COLORS`)
 - [x] `ThemeContext` + `useTheme()` hook
 - [x] Toggle from Settings and Onboarding
@@ -174,6 +202,7 @@
 - [x] StatusBar style auto-switches
 
 ### Biometric Lock
+
 - [x] Face ID / Fingerprint authentication (`expo-local-authentication`)
 - [x] Toggle in Settings (requires successful auth to enable)
 - [x] BiometricGate blocks app launch until authenticated
@@ -183,6 +212,7 @@
 - [x] Auto-detect biometric type (Face ID vs. Fingerprint) in UI labels
 
 ### Onboarding Flow
+
 - [x] First-launch walkthrough gated by `onboardingCompleted` flag
 - [x] 5 steps: Welcome, Currency, Income, Categories, Confirmation
 - [x] Animated transitions with progress dots
@@ -193,6 +223,7 @@
 - [x] Saves settings to Zustand store on completion
 
 ### Data Backup & Transfer
+
 - [x] JSON backup via native share sheet (iCloud Drive, Google Drive, Dropbox, etc.)
 - [x] Backup metadata (app name, version, export date)
 - [x] Restore from JSON file via document picker
@@ -204,27 +235,136 @@
 - [x] Includes categoryBudgets in backup/restore payload
 
 ### Data Export
+
 - [x] CSV export of all expenses, incomes, fixed expenses, fixed incomes
 - [x] Exported via native share sheet (Dashboard backup menu)
 
 ### Data Persistence
+
 - [x] Zustand `persist` middleware + AsyncStorage
-- [x] Persisted state: expenses, fixedExpenses, incomes, fixedIncomes, budgets, customCategories, categoryOrder, categoryBudgets, exchangeRates, savingsGoals, budgetTemplates, initialBalance, monthlyIncome, currencySymbol, themeMode, biometricEnabled, onboardingCompleted
+- [x] Persisted state: expenses, fixedExpenses, incomes, fixedIncomes, budgets, customCategories, categoryOrder, categoryBudgets, dashboardCards, exchangeRates, savingsGoals, budgetTemplates, initialBalance, monthlyIncome, currencySymbol, themeMode, biometricEnabled, onboardingCompleted
 - [x] Migration support (projects → budgets rename)
 - [x] Survives app restarts, force closes, device reboots
 
 ### UI / UX Components
+
 - [x] GlassCard (glass-morphism, theme-aware)
 - [x] AnimatedNumber (animated numeric display)
 - [x] CategoryIcon (dynamic icon resolver)
 - [x] LinearGradient backgrounds
 - [x] Custom Modal-based confirmations (no `Alert.alert`)
 - [x] Consistent spacing, font sizes, border radii, shadows constants
+- [x] UndoSnackbar — animated bottom snackbar with 5-second auto-dismiss; restores deleted expense/income/budget/savings goal preserving original IDs
+
+### Dashboard Customization
+
+- [x] Reorder dashboard cards via dedicated DashboardCustomize screen
+- [x] Toggle individual cards visible or hidden (Summary, Budget Usage, Categories, Quick Actions, Recent Transactions)
+- [x] Reset to default layout button
+- [x] Card order and visibility persisted in Zustand store
+- [x] Accessible from Settings → Customize Dashboard
+- [x] Hero card and header always shown (not customizable)
+
+### Push Notifications
+
+- [x] Local push notifications via `expo-notifications` (no remote push)
+- [x] Budget threshold alerts fire as push when app is backgrounded (75%, 90%, 100%)
+- [x] Category budget alerts as push (80%, 100%)
+- [x] Bill reminders scheduled for 1st of next month
+- [x] Settings toggle to enable/disable push notifications
+- [x] Foreground notification handling (show alert + sound)
+- [x] Graceful web degradation (toggle hidden on web)
+
+### Recurring Expense Auto-Processing
+
+- [x] Auto-generate actual expense entries from recurring items on app launch
+- [x] Deterministic IDs (`recurring-{fixedId}-{YYYY-MM-DD}`) for idempotency
+- [x] Track `startDate` and `lastProcessedDate` per recurring item
+- [x] Supports all 5 frequencies (weekly, biweekly, monthly, quarterly, yearly)
+- [x] Existing items default to current month start for backward compatibility
+- [x] Auto-generated entries excluded from balance calculations (no double-counting)
+- [x] Same logic applies to recurring income → auto-generated income entries
+- [x] Recurring badge (autorenew icon) shown on auto-generated entries in expense list
+
+### Export UI
+
+- [x] CSV export button (file-download icon) in Expenses tab search bar
+- [x] Exports all expenses, incomes, recurring expenses, recurring incomes via share sheet
+- [x] Existing Dashboard backup menu export also retained
+
+### Year-over-Year Trends
+
+- [x] Time range selector: 6 Mo (default), 12 Mo, Year over Year
+- [x] 12-month view shows last 12 months with narrower bars
+- [x] YoY grouped bar chart: same month across years with distinct color per year
+- [x] YoY comparison summary card (e.g. "Apr 2026 vs Apr 2025: +12.3%")
+- [x] YoY summary table with year columns side by side
+- [x] Horizontal scroll for YoY chart when many months have data
+- [x] Capped at 3 most recent years per month
+- [x] Store computed `getYearOverYearData()` groups tracked months by month-of-year
+
+### Natural Language Quick-Add
+
+- [x] Dashboard QuickAddBar for typing expenses in plain text
+- [x] Parser handles: "coffee 4.50", "45 groceries", "$12 lunch", "uber 23 transport"
+- [x] Extracts amount, description, and category hint from free-form input
+- [x] Preview card shows parsed result with suggested category before confirming
+- [x] One-tap add with success animation feedback
+- [x] Supports currency symbol prefixes ($, €, £, ¥, etc.)
+- [x] Utility: `src/utils/nlParser.ts`, Component: `src/components/dashboard/QuickAddBar.tsx`
+
+### Smart Category Suggestions
+
+- [x] History-based learning from past description→category pairs
+- [x] Keyword dictionary fallback (80+ terms: uber→Transport, netflix→Subscriptions, etc.)
+- [x] Exact description match at 95% confidence
+- [x] Word-frequency scoring for partial matches
+- [x] Suggestion chip above category grid in AddExpenseScreen (≥40% confidence)
+- [x] Tap to auto-select suggested category
+- [x] All processing local, no cloud dependency
+- [x] Utility: `src/utils/categorySuggester.ts`
+
+### Budget Sharing
+
+- [x] Share budget + linked expenses via native share sheet (JSON file)
+- [x] Generate base64 transfer code for copy/paste sharing
+- [x] Import shared budgets via paste-and-import modal in Budgets screen
+- [x] Imported budgets get new IDs (no collision)
+- [x] Duplicate detection by name + color
+- [x] Share button in Budget Detail screen header
+- [x] Import button in Budgets screen header
+- [x] No cloud or account required — peer-to-peer
+- [x] Utility: `src/utils/budgetSharing.ts`
+
+### AI Assistant
+
+- [x] Chat-based financial assistant powered by Gemini API
+- [x] Contextual awareness of user's expenses, income, budgets, and savings goals
+- [x] Tool-based architecture: assistant can query store data to answer questions
+- [x] Suggested prompts for common financial queries
+- [x] Requires Gemini API key (configured in Settings)
+- [x] Chat input bar with send button
+- [x] Message bubbles (user/assistant)
+
+### Receipt OCR
+
+- [x] Scan receipt photos to auto-extract amount, description, category, and date
+- [x] Uses Gemini Vision API (gemini-2.0-flash model)
+- [x] Requires API key configured in Settings (stored in AsyncStorage)
+- [x] "Scan Receipt" button appears in AddExpense receipt section when API key is set
+- [x] Handles rate limiting and invalid key errors gracefully
+
+### Store Architecture
+
+- [x] Zustand store refactored to slice pattern (6 slices)
+- [x] Slices: expenseSlice, incomeSlice, budgetSlice, savingsSlice, settingsSlice, computedSlice
+- [x] Component extraction: dashboard, expense, budget, assistant sub-component folders
 
 ### Navigation
-- [x] Bottom tabs: Dashboard, Expenses, Budgets, Recurring
+
+- [x] Bottom tabs: Dashboard, Expenses, Income, Budgets, Recurring
 - [x] Stack modals: AddExpense, AddIncome
-- [x] Stack slides: BudgetDetail, Notifications, Trends, SavingsGoals, Settings, DataTransfer, ReorderCategories, CategoryBudgets
+- [x] Stack slides: BudgetDetail, Notifications, Trends, SavingsGoals, Settings, DataTransfer, ReorderCategories, CategoryBudgets, DashboardCustomize, Assistant, IncomeList
 - [x] BiometricGate and OnboardingGate at app root
 
 ---
@@ -232,23 +372,20 @@
 ## ⬜ Missing / Proposed Features
 
 ### High Priority
-- [ ] **Push Notifications** — integrate `expo-notifications` so budget alerts and bill reminders fire when the app is closed
-- [ ] **Recurring expense auto-processing** — auto-generate actual expense entries each period so recurring items appear in trends and lists
-- [ ] **Export UI for CSV** — currently CSV export exists in utils but only reachable via Dashboard backup menu; add dedicated export screen or button in Expenses tab
-- [ ] **Year-over-year trends** — compare same-month across years (Trends currently only shows last 6 months)
+
+- [x] **Push Notifications** — integrate `expo-notifications` so budget alerts and bill reminders fire when the app is closed
+- [x] **Recurring expense auto-processing** — auto-generate actual expense entries each period so recurring items appear in trends and lists
+- [x] **Export UI for CSV** — dedicated export button in Expenses tab header (file-download icon) alongside existing Dashboard backup menu
+- [x] **Year-over-year trends** — time range selector (6 Mo / 12 Mo / Year over Year) with grouped bar chart comparing same month across years
 
 ### Medium Priority
-- [ ] **Tags / labels** on expenses — cross-cutting labels beyond a single category (e.g., "Vacation", "Tax-deductible")
-- [ ] **Split transactions** — split one purchase across multiple categories or budgets
-- [ ] **Live exchange rates** — auto-fetch from a public API (e.g., exchangerate.host) instead of manual entry
-- [ ] **Receipt OCR** — parse amount, date, and vendor from receipt photos to auto-fill expense fields
-- [ ] **Savings goal auto-contributions** — optional monthly auto-allocation toward a goal
-- [ ] **Undo delete (snackbar)** — brief undo toast after deleting expense/income/budget/goal
-- [ ] **Convert one-time expense to recurring** — option in edit screen to promote/demote recurrence
+
+- [x] **Receipt OCR** — parse amount, date, vendor, and category from receipt photos via Gemini Vision API (requires API key in Settings)
 
 ### Nice to Have
-- [ ] **Dashboard customization** — reorder or hide dashboard cards
-- [ ] **Shared budgets / expense splitting** — couples or roommates splitting expenses
+
+- [x] **Dashboard customization** — reorder or hide dashboard cards
+- [x] **Shared budgets** — share individual budgets with linked expenses via transfer code or file (peer-to-peer, no cloud)
 - [ ] **Scheduled auto-backup** — reminder or automatic periodic backup
 - [ ] **Home screen widgets** — quick-add expense without opening the app (requires `expo prebuild`, not Expo Go)
 - [ ] **Expense notes / attachments beyond receipts** — attach multiple photos or PDFs

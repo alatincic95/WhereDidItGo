@@ -146,7 +146,7 @@ export const FixedExpensesScreen: React.FC = () => {
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Recurring</Text>
+        <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Recurring</Text>
         <TouchableOpacity
           style={styles.addBtn}
           onPress={() => activeTab === 'expenses' ? openExpenseModal() : openIncomeModal()}
@@ -161,7 +161,7 @@ export const FixedExpensesScreen: React.FC = () => {
       </View>
 
       {/* Tab Toggle */}
-      <View style={styles.tabContainer}>
+      <View style={[styles.tabContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
         <TouchableOpacity
           style={[styles.tab, activeTab === 'expenses' && styles.tabActiveExpense]}
           onPress={() => setActiveTab('expenses')}
@@ -169,9 +169,9 @@ export const FixedExpensesScreen: React.FC = () => {
           <MaterialIcons
             name="trending-down"
             size={16}
-            color={activeTab === 'expenses' ? COLORS.accent : COLORS.textMuted}
+            color={activeTab === 'expenses' ? colors.accent : colors.textMuted}
           />
-          <Text style={[styles.tabText, activeTab === 'expenses' && styles.tabTextActiveExpense]}>
+          <Text style={[styles.tabText, { color: colors.textMuted }, activeTab === 'expenses' && styles.tabTextActiveExpense]}>
             Expenses
           </Text>
         </TouchableOpacity>
@@ -182,9 +182,9 @@ export const FixedExpensesScreen: React.FC = () => {
           <MaterialIcons
             name="trending-up"
             size={16}
-            color={activeTab === 'income' ? COLORS.success : COLORS.textMuted}
+            color={activeTab === 'income' ? colors.success : colors.textMuted}
           />
-          <Text style={[styles.tabText, activeTab === 'income' && styles.tabTextActiveIncome]}>
+          <Text style={[styles.tabText, { color: colors.textMuted }, activeTab === 'income' && styles.tabTextActiveIncome]}>
             Income
           </Text>
         </TouchableOpacity>
@@ -201,22 +201,22 @@ export const FixedExpensesScreen: React.FC = () => {
             <GlassCard style={styles.totalCard} glowColor={COLORS.accent} intensity="medium">
               <View style={styles.totalRow}>
                 <View>
-                  <Text style={styles.totalLabel}>Monthly Expenses</Text>
-                  <Text style={styles.totalAmount}>{formatCurrency(expenseTotal)}</Text>
+                  <Text style={[styles.totalLabel, { color: colors.textMuted }]}>Monthly Expenses</Text>
+                  <Text style={[styles.totalAmount, { color: colors.textPrimary }]}>{formatCurrency(expenseTotal)}</Text>
                 </View>
                 <View style={[styles.totalIcon, { backgroundColor: 'rgba(255, 107, 157, 0.12)', borderColor: 'rgba(255, 107, 157, 0.2)' }]}>
                   <MaterialIcons name="trending-down" size={28} color={COLORS.accent} />
                 </View>
               </View>
-              <View style={styles.totalMeta}>
+              <View style={[styles.totalMeta, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.04)' : `${colors.border}40` }]}>
                 <View style={styles.totalMetaItem}>
-                  <Text style={styles.totalMetaNum}>{fixedExpenses.length}</Text>
-                  <Text style={styles.totalMetaLabel}>Active</Text>
+                  <Text style={[styles.totalMetaNum, { color: colors.textPrimary }]}>{fixedExpenses.length}</Text>
+                  <Text style={[styles.totalMetaLabel, { color: colors.textMuted }]}>Active</Text>
                 </View>
-                <View style={styles.totalMetaDivider} />
+                <View style={[styles.totalMetaDivider, { backgroundColor: colors.border }]} />
                 <View style={styles.totalMetaItem}>
-                  <Text style={styles.totalMetaNum}>{formatCurrency(expenseTotal * 12)}</Text>
-                  <Text style={styles.totalMetaLabel}>Yearly</Text>
+                  <Text style={[styles.totalMetaNum, { color: colors.textPrimary }]}>{formatCurrency(expenseTotal * 12)}</Text>
+                  <Text style={[styles.totalMetaLabel, { color: colors.textMuted }]}>Yearly</Text>
                 </View>
               </View>
             </GlassCard>
@@ -228,28 +228,28 @@ export const FixedExpensesScreen: React.FC = () => {
               return (
                 <TouchableOpacity
                   key={item.id}
-                  style={styles.listItem}
+                  style={[styles.listItem, { backgroundColor: colors.surface, borderColor: colors.border }]}
                   activeOpacity={0.7}
                   onPress={() => openExpenseModal(item)}
                 >
                   <CategoryIcon category={item.category} size={48} />
                   <View style={styles.listItemInfo}>
-                    <Text style={styles.listItemDesc}>{item.description}</Text>
+                    <Text style={[styles.listItemDesc, { color: colors.textPrimary }]}>{item.description}</Text>
                     <View style={styles.listItemTagRow}>
                       <View style={[styles.listItemTag, { backgroundColor: `${color}15`, borderColor: `${color}30` }]}>
                         <Text style={[styles.listItemTagText, { color }]}>{item.category}</Text>
                       </View>
-                      <View style={styles.listItemTag}>
-                        <MaterialIcons name="autorenew" size={10} color={COLORS.textMuted} />
-                        <Text style={styles.listItemTagText}>
+                      <View style={[styles.listItemTag, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.04)' : `${colors.border}40`, borderColor: colors.border }]}>
+                        <MaterialIcons name="autorenew" size={10} color={colors.textMuted} />
+                        <Text style={[styles.listItemTagText, { color: colors.textMuted }]}>
                           {FREQUENCY_OPTIONS.find((f) => f.value === (item.frequency || 'monthly'))?.label || 'Monthly'}
                         </Text>
                       </View>
                     </View>
                   </View>
                   <View style={styles.listItemRight}>
-                    <Text style={[styles.listItemAmount, { color: COLORS.accent }]}>{formatCurrency(item.amount)}</Text>
-                    <Text style={styles.listItemPer}>
+                    <Text style={[styles.listItemAmount, { color: colors.accent }]}>{formatCurrency(item.amount)}</Text>
+                    <Text style={[styles.listItemPer, { color: colors.textMuted }]}>
                       /{FREQUENCY_OPTIONS.find((f) => f.value === (item.frequency || 'monthly'))?.shortLabel.toLowerCase() || 'month'}
                     </Text>
                   </View>
@@ -259,11 +259,11 @@ export const FixedExpensesScreen: React.FC = () => {
 
             {fixedExpenses.length === 0 && (
               <View style={styles.emptyState}>
-                <View style={styles.emptyIcon}>
-                  <MaterialIcons name="autorenew" size={48} color={COLORS.textMuted} />
+                <View style={[styles.emptyIcon, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                  <MaterialIcons name="autorenew" size={48} color={colors.textMuted} />
                 </View>
-                <Text style={styles.emptyTitle}>No recurring expenses</Text>
-                <Text style={styles.emptySubtext}>
+                <Text style={[styles.emptyTitle, { color: colors.textPrimary }]}>No recurring expenses</Text>
+                <Text style={[styles.emptySubtext, { color: colors.textMuted }]}>
                   Add recurring expenses like rent, subscriptions, and bills
                 </Text>
               </View>
@@ -275,22 +275,22 @@ export const FixedExpensesScreen: React.FC = () => {
             <GlassCard style={styles.totalCard} glowColor={COLORS.success} intensity="medium">
               <View style={styles.totalRow}>
                 <View>
-                  <Text style={styles.totalLabel}>Monthly Income</Text>
-                  <Text style={styles.totalAmount}>{formatCurrency(incomeTotal)}</Text>
+                  <Text style={[styles.totalLabel, { color: colors.textMuted }]}>Monthly Income</Text>
+                  <Text style={[styles.totalAmount, { color: colors.textPrimary }]}>{formatCurrency(incomeTotal)}</Text>
                 </View>
                 <View style={[styles.totalIcon, { backgroundColor: 'rgba(0, 214, 143, 0.12)', borderColor: 'rgba(0, 214, 143, 0.2)' }]}>
                   <MaterialIcons name="trending-up" size={28} color={COLORS.success} />
                 </View>
               </View>
-              <View style={styles.totalMeta}>
+              <View style={[styles.totalMeta, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.04)' : `${colors.border}40` }]}>
                 <View style={styles.totalMetaItem}>
-                  <Text style={styles.totalMetaNum}>{fixedIncomes.length}</Text>
-                  <Text style={styles.totalMetaLabel}>Sources</Text>
+                  <Text style={[styles.totalMetaNum, { color: colors.textPrimary }]}>{fixedIncomes.length}</Text>
+                  <Text style={[styles.totalMetaLabel, { color: colors.textMuted }]}>Sources</Text>
                 </View>
-                <View style={styles.totalMetaDivider} />
+                <View style={[styles.totalMetaDivider, { backgroundColor: colors.border }]} />
                 <View style={styles.totalMetaItem}>
-                  <Text style={styles.totalMetaNum}>{formatCurrency(incomeTotal * 12)}</Text>
-                  <Text style={styles.totalMetaLabel}>Yearly</Text>
+                  <Text style={[styles.totalMetaNum, { color: colors.textPrimary }]}>{formatCurrency(incomeTotal * 12)}</Text>
+                  <Text style={[styles.totalMetaLabel, { color: colors.textMuted }]}>Yearly</Text>
                 </View>
               </View>
             </GlassCard>
@@ -302,7 +302,7 @@ export const FixedExpensesScreen: React.FC = () => {
               return (
                 <TouchableOpacity
                   key={item.id}
-                  style={styles.listItem}
+                  style={[styles.listItem, { backgroundColor: colors.surface, borderColor: colors.border }]}
                   activeOpacity={0.7}
                   onPress={() => openIncomeModal(item)}
                 >
@@ -310,22 +310,22 @@ export const FixedExpensesScreen: React.FC = () => {
                     <MaterialIcons name={icon as any} size={24} color={color} />
                   </View>
                   <View style={styles.listItemInfo}>
-                    <Text style={styles.listItemDesc}>{item.description}</Text>
+                    <Text style={[styles.listItemDesc, { color: colors.textPrimary }]}>{item.description}</Text>
                     <View style={styles.listItemTagRow}>
                       <View style={[styles.listItemTag, { backgroundColor: `${color}15`, borderColor: `${color}30` }]}>
                         <Text style={[styles.listItemTagText, { color }]}>{item.source}</Text>
                       </View>
-                      <View style={styles.listItemTag}>
-                        <MaterialIcons name="autorenew" size={10} color={COLORS.textMuted} />
-                        <Text style={styles.listItemTagText}>
+                      <View style={[styles.listItemTag, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.04)' : `${colors.border}40`, borderColor: colors.border }]}>
+                        <MaterialIcons name="autorenew" size={10} color={colors.textMuted} />
+                        <Text style={[styles.listItemTagText, { color: colors.textMuted }]}>
                           {FREQUENCY_OPTIONS.find((f) => f.value === (item.frequency || 'monthly'))?.label || 'Monthly'}
                         </Text>
                       </View>
                     </View>
                   </View>
                   <View style={styles.listItemRight}>
-                    <Text style={[styles.listItemAmount, { color: COLORS.success }]}>{formatCurrency(item.amount)}</Text>
-                    <Text style={styles.listItemPer}>
+                    <Text style={[styles.listItemAmount, { color: colors.success }]}>{formatCurrency(item.amount)}</Text>
+                    <Text style={[styles.listItemPer, { color: colors.textMuted }]}>
                       /{FREQUENCY_OPTIONS.find((f) => f.value === (item.frequency || 'monthly'))?.shortLabel.toLowerCase() || 'month'}
                     </Text>
                   </View>
@@ -335,11 +335,11 @@ export const FixedExpensesScreen: React.FC = () => {
 
             {fixedIncomes.length === 0 && (
               <View style={styles.emptyState}>
-                <View style={styles.emptyIcon}>
-                  <MaterialIcons name="account-balance" size={48} color={COLORS.textMuted} />
+                <View style={[styles.emptyIcon, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                  <MaterialIcons name="account-balance" size={48} color={colors.textMuted} />
                 </View>
-                <Text style={styles.emptyTitle}>No recurring income</Text>
-                <Text style={styles.emptySubtext}>
+                <Text style={[styles.emptyTitle, { color: colors.textPrimary }]}>No recurring income</Text>
+                <Text style={[styles.emptySubtext, { color: colors.textMuted }]}>
                   Add recurring income like salary, rental income, or dividends
                 </Text>
               </View>
@@ -357,49 +357,49 @@ export const FixedExpensesScreen: React.FC = () => {
         presentationStyle="pageSheet"
         onRequestClose={() => setModalVisible(false)}
       >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalHeader}>
+        <View style={[styles.modalContainer, { backgroundColor: colors.background }]}>
+          <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
             <TouchableOpacity onPress={() => setModalVisible(false)}>
-              <Text style={styles.modalCancel}>Cancel</Text>
+              <Text style={[styles.modalCancel, { color: colors.textMuted }]}>Cancel</Text>
             </TouchableOpacity>
-            <Text style={styles.modalTitle}>
+            <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>
               {isEditingExpenseModal
                 ? `${editingExpense ? 'Edit' : 'New'} Recurring Expense`
                 : `${editingIncome ? 'Edit' : 'New'} Recurring Income`}
             </Text>
             <TouchableOpacity onPress={handleSave}>
-              <Text style={styles.modalSave}>Save</Text>
+              <Text style={[styles.modalSave, { color: colors.primary }]}>Save</Text>
             </TouchableOpacity>
           </View>
 
           <ScrollView contentContainerStyle={styles.modalContent}>
             {/* Amount */}
-            <Text style={styles.modalLabel}>Amount</Text>
+            <Text style={[styles.modalLabel, { color: colors.textMuted }]}>Amount</Text>
             <View style={styles.modalAmountRow}>
-              <Text style={styles.modalCurrency}>$</Text>
+              <Text style={[styles.modalCurrency, { color: colors.primary }]}>$</Text>
               <TextInput
-                style={styles.modalAmountInput}
+                style={[styles.modalAmountInput, { color: colors.textPrimary }]}
                 value={amount}
                 onChangeText={setAmount}
                 placeholder="0.00"
-                placeholderTextColor={COLORS.textMuted}
+                placeholderTextColor={colors.textMuted}
                 keyboardType="decimal-pad"
                 autoFocus
               />
             </View>
 
             {/* Description */}
-            <Text style={styles.modalLabel}>Description</Text>
+            <Text style={[styles.modalLabel, { color: colors.textMuted }]}>Description</Text>
             <TextInput
-              style={styles.modalInput}
+              style={[styles.modalInput, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.textPrimary }]}
               value={description}
               onChangeText={setDescription}
               placeholder={isEditingExpenseModal ? 'e.g., Netflix subscription' : 'e.g., Monthly salary'}
-              placeholderTextColor={COLORS.textMuted}
+              placeholderTextColor={colors.textMuted}
             />
 
             {/* Frequency */}
-            <Text style={styles.modalLabel}>Frequency</Text>
+            <Text style={[styles.modalLabel, { color: colors.textMuted }]}>Frequency</Text>
             <View style={styles.frequencyRow}>
               {FREQUENCY_OPTIONS.map((opt) => {
                 const isSelected = frequency === opt.value;
@@ -408,13 +408,15 @@ export const FixedExpensesScreen: React.FC = () => {
                     key={opt.value}
                     style={[
                       styles.frequencyChip,
-                      isSelected && styles.frequencyChipActive,
+                      { backgroundColor: colors.surface, borderColor: colors.border },
+                      isSelected && [styles.frequencyChipActive, { borderColor: colors.primary, backgroundColor: `${colors.primary}15` }],
                     ]}
                     onPress={() => setFrequency(opt.value)}
                   >
                     <Text style={[
                       styles.frequencyChipText,
-                      isSelected && styles.frequencyChipTextActive,
+                      { color: colors.textMuted },
+                      isSelected && [styles.frequencyChipTextActive, { color: colors.primary }],
                     ]}>
                       {opt.label}
                     </Text>
@@ -426,7 +428,7 @@ export const FixedExpensesScreen: React.FC = () => {
             {isEditingExpenseModal ? (
               <>
                 {/* Category */}
-                <Text style={styles.modalLabel}>Category</Text>
+                <Text style={[styles.modalLabel, { color: colors.textMuted }]}>Category</Text>
                 <View style={styles.modalChipGrid}>
                   {getOrderedCategories().map((cat) => {
                     const isSelected = category === cat;
@@ -438,6 +440,7 @@ export const FixedExpensesScreen: React.FC = () => {
                         key={cat}
                         style={[
                           styles.modalChip,
+                          { backgroundColor: colors.surface, borderColor: colors.border },
                           isSelected && { borderColor: color, backgroundColor: `${color}15` },
                         ]}
                         onPress={() => setCategory(cat)}
@@ -445,9 +448,9 @@ export const FixedExpensesScreen: React.FC = () => {
                         <MaterialIcons
                           name={icon as any}
                           size={20}
-                          color={isSelected ? color : COLORS.textMuted}
+                          color={isSelected ? color : colors.textMuted}
                         />
-                        <Text style={[styles.modalChipText, isSelected && { color }]}>
+                        <Text style={[styles.modalChipText, { color: colors.textSecondary }, isSelected && { color }]}>
                           {cat}
                         </Text>
                       </TouchableOpacity>
@@ -458,7 +461,7 @@ export const FixedExpensesScreen: React.FC = () => {
             ) : (
               <>
                 {/* Source */}
-                <Text style={styles.modalLabel}>Source</Text>
+                <Text style={[styles.modalLabel, { color: colors.textMuted }]}>Source</Text>
                 <View style={styles.modalChipGrid}>
                   {INCOME_SOURCES.map((s) => {
                     const isSelected = source === s;
@@ -469,6 +472,7 @@ export const FixedExpensesScreen: React.FC = () => {
                         key={s}
                         style={[
                           styles.modalChip,
+                          { backgroundColor: colors.surface, borderColor: colors.border },
                           isSelected && { borderColor: color, backgroundColor: `${color}15` },
                         ]}
                         onPress={() => setSource(s)}
@@ -476,9 +480,9 @@ export const FixedExpensesScreen: React.FC = () => {
                         <MaterialIcons
                           name={icon as any}
                           size={20}
-                          color={isSelected ? color : COLORS.textMuted}
+                          color={isSelected ? color : colors.textMuted}
                         />
-                        <Text style={[styles.modalChipText, isSelected && { color }]}>
+                        <Text style={[styles.modalChipText, { color: colors.textSecondary }, isSelected && { color }]}>
                           {s}
                         </Text>
                       </TouchableOpacity>
@@ -516,17 +520,17 @@ export const FixedExpensesScreen: React.FC = () => {
           activeOpacity={1}
           onPress={() => setShowDeleteConfirm(false)}
         >
-          <View style={styles.deleteContainer}>
-            <Text style={styles.deleteTitle}>
+          <View style={[styles.deleteContainer, { backgroundColor: colors.surface }]}>
+            <Text style={[styles.deleteTitle, { color: colors.textPrimary }]}>
               Delete {editingExpense ? 'Recurring Expense' : 'Recurring Income'}
             </Text>
-            <Text style={styles.deleteMessage}>Are you sure? This cannot be undone.</Text>
+            <Text style={[styles.deleteMessage, { color: colors.textSecondary }]}>Are you sure? This cannot be undone.</Text>
             <View style={styles.deleteButtons}>
               <TouchableOpacity
-                style={styles.deleteCancelBtn}
+                style={[styles.deleteCancelBtn, { backgroundColor: colors.background }]}
                 onPress={() => setShowDeleteConfirm(false)}
               >
-                <Text style={styles.deleteCancelText}>Cancel</Text>
+                <Text style={[styles.deleteCancelText, { color: colors.textSecondary }]}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.deleteConfirmBtn}

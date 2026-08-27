@@ -4,6 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 import { AppNotification, NotificationType, NOTIFICATION_TYPE_META } from '../types';
 import { useExpenseStore } from './useExpenseStore';
+import { scheduleBudgetAlert } from '../utils/localNotifications';
 
 interface NotificationState {
   notifications: AppNotification[];
@@ -84,6 +85,15 @@ export const useNotificationStore = create<NotificationState>()(
   generateSmartNotifications: (data) => {
     const { notifications, addNotification } = get();
     const existingTypes = new Set(notifications.map((n) => `${n.type}-${n.relatedId || 'global'}`));
+    const pushEnabled = useExpenseStore.getState().pushNotificationsEnabled;
+
+    // Helper: add in-app notification and optionally fire push notification
+    const notify = (type: NotificationType, title: string, message: string, relatedId?: string, pushId?: string) => {
+      addNotification(type, title, message, relatedId);
+      if (pushEnabled && pushId) {
+        scheduleBudgetAlert(title, message, pushId);
+      }
+    };
 
     const { monthlyBudget, totalSpent, fixedTotal, projects, fixedExpenses } = data;
     const allSpent = totalSpent + fixedTotal;
@@ -91,24 +101,28 @@ export const useNotificationStore = create<NotificationState>()(
 
     // Monthly budget warnings
     if (spendingRatio >= 1 && !existingTypes.has('budget_exceeded-global')) {
-      addNotification(
+      notify(
         'budget_exceeded',
         'Budget Exceeded!',
-        `You've spent ${formatCurrency(allSpent)} this month, exceeding your ${formatCurrency(monthlyBudget)} budget by ${formatCurrency(allSpent - monthlyBudget)}.`
+        `You've spent ${formatCurrency(allSpent)} this month, exceeding your ${formatCurrency(monthlyBudget)} budget by ${formatCurrency(allSpent - monthlyBudget)}.`,
+        undefined,
+        'push-budget-exceeded'
       );
     } else if (spendingRatio >= 0.9 && spendingRatio < 1 && !existingTypes.has('budget_warning-90')) {
-      addNotification(
+      notify(
         'budget_warning',
         'Almost at Budget Limit',
         `You've used ${Math.round(spendingRatio * 100)}% of your monthly budget. Only ${formatCurrency(monthlyBudget - allSpent)} remaining.`,
-        '90'
+        '90',
+        'push-budget-90'
       );
     } else if (spendingRatio >= 0.75 && spendingRatio < 0.9 && !existingTypes.has('budget_warning-75')) {
-      addNotification(
+      notify(
         'budget_warning',
         '75% Budget Used',
         `You've spent ${formatCurrency(allSpent)} of your ${formatCurrency(monthlyBudget)} monthly budget. Consider slowing down spending.`,
-        '75'
+        '75',
+        'push-budget-75'
       );
     }
 
@@ -118,18 +132,20 @@ export const useNotificationStore = create<NotificationState>()(
       const projectRatio = project.spent / project.budget;
 
       if (projectRatio >= 1 && !existingTypes.has(`project_budget_exceeded-${project.id}`)) {
-        addNotification(
+        notify(
           'project_budget_exceeded',
           `${project.name} Over Budget`,
           `Project "${project.name}" has exceeded its ${formatCurrency(project.budget)} budget. Total spent: ${formatCurrency(project.spent)}.`,
-          project.id
+          project.id,
+          `push-proj-exceeded-${project.id}`
         );
       } else if (projectRatio >= 0.8 && projectRatio < 1 && !existingTypes.has(`project_budget_warning-${project.id}`)) {
-        addNotification(
+        notify(
           'project_budget_warning',
           `${project.name} Nearing Budget`,
           `${Math.round(projectRatio * 100)}% of the budget for "${project.name}" has been used. ${formatCurrency(project.budget - project.spent)} remaining.`,
-          project.id
+          project.id,
+          `push-proj-warning-${project.id}`
         );
       }
     });
@@ -140,18 +156,20 @@ export const useNotificationStore = create<NotificationState>()(
         if (cb.limit <= 0) return;
 
         if (cb.percentage >= 1 && !existingTypes.has(`category_budget_exceeded-${cb.category}`)) {
-          addNotification(
+          notify(
             'category_budget_exceeded',
             `${cb.category} Over Limit`,
             `You've spent ${formatCurrency(cb.spent)} on ${cb.category}, exceeding your ${formatCurrency(cb.limit)} monthly limit by ${formatCurrency(cb.spent - cb.limit)}.`,
-            cb.category
+            cb.category,
+            `push-cat-exceeded-${cb.category}`
           );
         } else if (cb.percentage >= 0.8 && cb.percentage < 1 && !existingTypes.has(`category_budget_warning-${cb.category}`)) {
-          addNotification(
+          notify(
             'category_budget_warning',
             `${cb.category} Near Limit`,
             `${Math.round(cb.percentage * 100)}% of your ${formatCurrency(cb.limit)} ${cb.category} budget used. ${formatCurrency(cb.limit - cb.spent)} remaining.`,
-            cb.category
+            cb.category,
+            `push-cat-warning-${cb.category}`
           );
         }
       });
@@ -161,11 +179,12 @@ export const useNotificationStore = create<NotificationState>()(
     const dayOfMonth = new Date().getDate();
     if (dayOfMonth <= 5 && fixedExpenses.length > 0 && !existingTypes.has('bill_reminder-monthly')) {
       const totalFixed = fixedExpenses.reduce((s, e) => s + e.amount, 0);
-      addNotification(
+      notify(
         'bill_reminder',
         'Monthly Bills Due',
         `You have ${fixedExpenses.length} recurring expense${fixedExpenses.length > 1 ? 's' : ''} totaling ${formatCurrency(totalFixed)} this month.`,
-        'monthly'
+        'monthly',
+        'push-bill-reminder'
       );
     }
 

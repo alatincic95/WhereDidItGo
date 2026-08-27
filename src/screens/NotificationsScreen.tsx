@@ -69,6 +69,7 @@ export const NotificationsScreen: React.FC = () => {
 
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [notificationToDelete, setNotificationToDelete] = useState<string | null>(null);
+  const [selectedNotification, setSelectedNotification] = useState<AppNotification | null>(null);
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const itemAnims = useRef(
@@ -95,6 +96,32 @@ export const NotificationsScreen: React.FC = () => {
   const unreadCount = getUnreadCount();
   const groups = groupNotifications(notifications);
 
+  const handleNotificationPress = (item: AppNotification) => {
+    markAsRead(item.id);
+    setSelectedNotification(item);
+  };
+
+  const getNavigationTarget = (item: AppNotification): { label: string; action: () => void } | null => {
+    switch (item.type) {
+      case 'budget_warning':
+      case 'budget_exceeded':
+        return { label: 'View Dashboard', action: () => navigation.navigate('Main', { screen: 'Dashboard' }) };
+      case 'project_budget_warning':
+      case 'project_budget_exceeded':
+        if (item.relatedId) {
+          return { label: 'View Budget', action: () => navigation.navigate('BudgetDetail', { projectId: item.relatedId }) };
+        }
+        return { label: 'View Budgets', action: () => navigation.navigate('Main', { screen: 'Budgets' }) };
+      case 'category_budget_warning':
+      case 'category_budget_exceeded':
+        return { label: 'View Category Budgets', action: () => navigation.navigate('CategoryBudgets') };
+      case 'bill_reminder':
+        return { label: 'View Recurring', action: () => navigation.navigate('Main', { screen: 'Fixed' }) };
+      default:
+        return null;
+    }
+  };
+
   const handleClearAll = () => {
     setShowClearConfirm(true);
   };
@@ -120,10 +147,11 @@ export const NotificationsScreen: React.FC = () => {
         <TouchableOpacity
           style={[
             styles.notificationItem,
-            !item.read && styles.notificationUnread,
+            { backgroundColor: colors.surface, borderColor: colors.border },
+            !item.read && [styles.notificationUnread, { backgroundColor: isDark ? 'rgba(22, 33, 62, 0.8)' : colors.backgroundCard, borderColor: isDark ? 'rgba(108, 99, 255, 0.12)' : colors.border }],
           ]}
           activeOpacity={0.7}
-          onPress={() => markAsRead(item.id)}
+          onPress={() => handleNotificationPress(item)}
           onLongPress={() => setNotificationToDelete(item.id)}
         >
           {/* Icon */}
@@ -142,17 +170,18 @@ export const NotificationsScreen: React.FC = () => {
               <Text
                 style={[
                   styles.notificationTitle,
-                  !item.read && styles.notificationTitleUnread,
+                  { color: colors.textSecondary },
+                  !item.read && [styles.notificationTitleUnread, { color: colors.textPrimary }],
                 ]}
                 numberOfLines={1}
               >
                 {item.title}
               </Text>
-              <Text style={styles.notificationTime}>
+              <Text style={[styles.notificationTime, { color: colors.textMuted }]}>
                 {formatTimeAgo(item.createdAt)}
               </Text>
             </View>
-            <Text style={styles.notificationMessage} numberOfLines={2}>
+            <Text style={[styles.notificationMessage, { color: colors.textMuted }]} numberOfLines={2}>
               {item.message}
             </Text>
           </View>
@@ -169,12 +198,12 @@ export const NotificationsScreen: React.FC = () => {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-          <MaterialIcons name="arrow-back" size={24} color={COLORS.textPrimary} />
+      <View style={[styles.header, { borderBottomColor: colors.border }]}>
+        <TouchableOpacity style={[styles.backBtn, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={() => navigation.goBack()}>
+          <MaterialIcons name="arrow-back" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
         <View style={styles.headerCenter}>
-          <Text style={styles.headerTitle}>Notifications</Text>
+          <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Notifications</Text>
           {unreadCount > 0 && (
             <View style={styles.headerBadge}>
               <Text style={styles.headerBadgeText}>{unreadCount}</Text>
@@ -184,12 +213,12 @@ export const NotificationsScreen: React.FC = () => {
         <View style={styles.headerActions}>
           {unreadCount > 0 && (
             <TouchableOpacity style={styles.headerActionBtn} onPress={markAllAsRead}>
-              <MaterialIcons name="done-all" size={22} color={COLORS.primary} />
+              <MaterialIcons name="done-all" size={22} color={colors.primary} />
             </TouchableOpacity>
           )}
           {notifications.length > 0 && (
             <TouchableOpacity style={styles.headerActionBtn} onPress={handleClearAll}>
-              <MaterialIcons name="delete-outline" size={22} color={COLORS.textMuted} />
+              <MaterialIcons name="delete-outline" size={22} color={colors.textMuted} />
             </TouchableOpacity>
           )}
         </View>
@@ -202,18 +231,18 @@ export const NotificationsScreen: React.FC = () => {
         >
           {notifications.length === 0 ? (
             <View style={styles.emptyState}>
-              <View style={styles.emptyIcon}>
-                <MaterialIcons name="notifications-off" size={48} color={COLORS.textMuted} />
+              <View style={[styles.emptyIcon, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                <MaterialIcons name="notifications-off" size={48} color={colors.textMuted} />
               </View>
-              <Text style={styles.emptyTitle}>All caught up!</Text>
-              <Text style={styles.emptySubtext}>
+              <Text style={[styles.emptyTitle, { color: colors.textPrimary }]}>All caught up!</Text>
+              <Text style={[styles.emptySubtext, { color: colors.textMuted }]}>
                 You'll get alerts about budget limits, bill reminders, and project spending here.
               </Text>
             </View>
           ) : (
             groups.map((group) => (
               <View key={group.title} style={styles.group}>
-                <Text style={styles.groupTitle}>{group.title}</Text>
+                <Text style={[styles.groupTitle, { color: colors.textMuted }]}>{group.title}</Text>
                 {group.data.map((item, index) => renderNotification(item, index))}
               </View>
             ))
@@ -222,9 +251,9 @@ export const NotificationsScreen: React.FC = () => {
           {/* Info card */}
           {notifications.length > 0 && (
             <View style={styles.infoCard}>
-              <MaterialIcons name="info-outline" size={16} color={COLORS.textMuted} />
-              <Text style={styles.infoText}>
-                Tap to mark as read. Long press to delete.
+              <MaterialIcons name="info-outline" size={16} color={colors.textMuted} />
+              <Text style={[styles.infoText, { color: colors.textMuted }]}>
+                Tap to view details. Long press to delete.
               </Text>
             </View>
           )}
@@ -245,15 +274,15 @@ export const NotificationsScreen: React.FC = () => {
           activeOpacity={1}
           onPress={() => setShowClearConfirm(false)}
         >
-          <View style={styles.confirmContainer}>
-            <Text style={styles.confirmTitle}>Clear All</Text>
-            <Text style={styles.confirmMessage}>Remove all notifications?</Text>
+          <View style={[styles.confirmContainer, { backgroundColor: colors.surface }]}>
+            <Text style={[styles.confirmTitle, { color: colors.textPrimary }]}>Clear All</Text>
+            <Text style={[styles.confirmMessage, { color: colors.textSecondary }]}>Remove all notifications?</Text>
             <View style={styles.confirmButtons}>
               <TouchableOpacity
-                style={styles.confirmCancelBtn}
+                style={[styles.confirmCancelBtn, { backgroundColor: colors.background }]}
                 onPress={() => setShowClearConfirm(false)}
               >
-                <Text style={styles.confirmCancelText}>Cancel</Text>
+                <Text style={[styles.confirmCancelText, { color: colors.textSecondary }]}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.confirmDeleteBtn}
@@ -281,15 +310,15 @@ export const NotificationsScreen: React.FC = () => {
           activeOpacity={1}
           onPress={() => setNotificationToDelete(null)}
         >
-          <View style={styles.confirmContainer}>
-            <Text style={styles.confirmTitle}>Delete</Text>
-            <Text style={styles.confirmMessage}>Remove this notification?</Text>
+          <View style={[styles.confirmContainer, { backgroundColor: colors.surface }]}>
+            <Text style={[styles.confirmTitle, { color: colors.textPrimary }]}>Delete</Text>
+            <Text style={[styles.confirmMessage, { color: colors.textSecondary }]}>Remove this notification?</Text>
             <View style={styles.confirmButtons}>
               <TouchableOpacity
-                style={styles.confirmCancelBtn}
+                style={[styles.confirmCancelBtn, { backgroundColor: colors.background }]}
                 onPress={() => setNotificationToDelete(null)}
               >
-                <Text style={styles.confirmCancelText}>Cancel</Text>
+                <Text style={[styles.confirmCancelText, { color: colors.textSecondary }]}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.confirmDeleteBtn}
@@ -303,6 +332,63 @@ export const NotificationsScreen: React.FC = () => {
                 <Text style={styles.confirmDeleteText}>Delete</Text>
               </TouchableOpacity>
             </View>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* Notification Detail Modal */}
+      <Modal
+        visible={selectedNotification !== null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setSelectedNotification(null)}
+      >
+        <TouchableOpacity
+          style={styles.confirmOverlay}
+          activeOpacity={1}
+          onPress={() => setSelectedNotification(null)}
+        >
+          <View style={[styles.detailContainer, { backgroundColor: colors.surface }]} onStartShouldSetResponder={() => true}>
+            {selectedNotification && (
+              <>
+                <View style={styles.detailHeader}>
+                  <View
+                    style={[
+                      styles.detailIcon,
+                      { backgroundColor: `${selectedNotification.color}18`, borderColor: `${selectedNotification.color}30` },
+                    ]}
+                  >
+                    <MaterialIcons name={selectedNotification.icon as any} size={24} color={selectedNotification.color} />
+                  </View>
+                  <TouchableOpacity
+                    style={[styles.detailCloseBtn, { backgroundColor: colors.background }]}
+                    onPress={() => setSelectedNotification(null)}
+                  >
+                    <MaterialIcons name="close" size={20} color={colors.textMuted} />
+                  </TouchableOpacity>
+                </View>
+                <Text style={[styles.detailTitle, { color: colors.textPrimary }]}>{selectedNotification.title}</Text>
+                <Text style={[styles.detailTime, { color: colors.textMuted }]}>{formatTimeAgo(selectedNotification.createdAt)}</Text>
+                <Text style={[styles.detailMessage, { color: colors.textSecondary }]}>{selectedNotification.message}</Text>
+                {(() => {
+                  const target = getNavigationTarget(selectedNotification);
+                  if (!target) return null;
+                  return (
+                    <TouchableOpacity
+                      style={styles.detailActionBtn}
+                      activeOpacity={0.7}
+                      onPress={() => {
+                        setSelectedNotification(null);
+                        target.action();
+                      }}
+                    >
+                      <MaterialIcons name="arrow-forward" size={18} color="#FFF" />
+                      <Text style={styles.detailActionText}>{target.label}</Text>
+                    </TouchableOpacity>
+                  );
+                })()}
+              </>
+            )}
           </View>
         </TouchableOpacity>
       </Modal>
@@ -550,5 +636,69 @@ const styles = StyleSheet.create({
     fontSize: FONT_SIZE.md,
     fontWeight: '600',
     color: COLORS.danger,
+  },
+
+  // Detail Modal
+  detailContainer: {
+    backgroundColor: COLORS.surface,
+    borderRadius: BORDER_RADIUS.lg,
+    padding: SPACING.xl,
+    width: '85%',
+    maxWidth: 380,
+  },
+  detailHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: SPACING.md,
+  },
+  detailIcon: {
+    width: 46,
+    height: 46,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+  },
+  detailCloseBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: COLORS.background,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  detailTitle: {
+    fontSize: FONT_SIZE.lg,
+    fontWeight: '700',
+    color: COLORS.textPrimary,
+    marginBottom: 4,
+  },
+  detailTime: {
+    fontSize: FONT_SIZE.xs,
+    color: COLORS.textMuted,
+    fontWeight: '500',
+    marginBottom: SPACING.md,
+  },
+  detailMessage: {
+    fontSize: FONT_SIZE.md,
+    color: COLORS.textSecondary,
+    fontWeight: '500',
+    lineHeight: 22,
+  },
+  detailActionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.primary,
+    borderRadius: BORDER_RADIUS.md,
+    paddingVertical: SPACING.sm + 2,
+    marginTop: SPACING.lg,
+    gap: 6,
+  },
+  detailActionText: {
+    fontSize: FONT_SIZE.md,
+    color: '#FFF',
+    fontWeight: '700',
   },
 });

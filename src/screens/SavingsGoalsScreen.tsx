@@ -18,6 +18,7 @@ import { COLORS, SPACING, FONT_SIZE, BORDER_RADIUS, SHADOWS } from '../constants
 import { useTheme } from '../contexts/ThemeContext';
 import { BUDGET_COLORS, SavingsGoal } from '../types';
 import { formatCurrency } from '../utils/currency';
+import { useUndoStore } from '../store/useUndoStore';
 
 const GOAL_ICONS = [
   'savings', 'flight', 'home', 'directions-car', 'school',
@@ -32,18 +33,21 @@ export const SavingsGoalsScreen: React.FC = () => {
   const {
     savingsGoals,
     addSavingsGoal,
+    addSavingsGoalWithId,
     updateSavingsGoal,
     deleteSavingsGoal,
     addToSavingsGoal,
     getOverallBalance,
     currencySymbol,
   } = useExpenseStore();
+  const showUndo = useUndoStore((s) => s.show);
 
   const [modalVisible, setModalVisible] = useState(false);
   const [editingGoal, setEditingGoal] = useState<SavingsGoal | null>(null);
   const [name, setName] = useState('');
   const [targetAmount, setTargetAmount] = useState('');
   const [deadline, setDeadline] = useState('');
+  const [autoContribution, setAutoContribution] = useState('');
   const [selectedColor, setSelectedColor] = useState(BUDGET_COLORS[0]);
   const [selectedIcon, setSelectedIcon] = useState(GOAL_ICONS[0]);
 
@@ -74,6 +78,7 @@ export const SavingsGoalsScreen: React.FC = () => {
       setName(goal.name);
       setTargetAmount(goal.targetAmount.toString());
       setDeadline(goal.deadline || '');
+      setAutoContribution(goal.autoContributionMonthly?.toString() || '');
       setSelectedColor(goal.color);
       setSelectedIcon(goal.icon);
     } else {
@@ -81,6 +86,7 @@ export const SavingsGoalsScreen: React.FC = () => {
       setName('');
       setTargetAmount('');
       setDeadline('');
+      setAutoContribution('');
       setSelectedColor(BUDGET_COLORS[0]);
       setSelectedIcon(GOAL_ICONS[0]);
     }
@@ -91,6 +97,8 @@ export const SavingsGoalsScreen: React.FC = () => {
     if (!name.trim() || !targetAmount) return;
     const target = parseFloat(targetAmount);
     if (isNaN(target) || target <= 0) return;
+    const autoMonthly = parseFloat(autoContribution);
+    const autoVal = !isNaN(autoMonthly) && autoMonthly > 0 ? autoMonthly : undefined;
 
     if (editingGoal) {
       updateSavingsGoal(editingGoal.id, {
@@ -99,6 +107,7 @@ export const SavingsGoalsScreen: React.FC = () => {
         deadline: deadline || undefined,
         color: selectedColor,
         icon: selectedIcon,
+        autoContributionMonthly: autoVal,
       });
     } else {
       addSavingsGoal({
@@ -108,6 +117,7 @@ export const SavingsGoalsScreen: React.FC = () => {
         deadline: deadline || undefined,
         color: selectedColor,
         icon: selectedIcon,
+        autoContributionMonthly: autoVal,
       });
     }
     setModalVisible(false);
@@ -153,7 +163,7 @@ export const SavingsGoalsScreen: React.FC = () => {
           setShowDeleteConfirm(true);
         }}
       >
-        <View style={[styles.goalCard, isComplete && styles.goalCardComplete]}>
+        <View style={[styles.goalCard, { backgroundColor: colors.surface, borderColor: colors.border }, isComplete && [styles.goalCardComplete, { borderColor: 'rgba(0, 214, 143, 0.2)' }]]}>
           <View style={[styles.goalAccent, { backgroundColor: goal.color }]} />
           <View style={styles.goalContent}>
             <View style={styles.goalHeader}>
@@ -162,9 +172,9 @@ export const SavingsGoalsScreen: React.FC = () => {
                   <MaterialIcons name={goal.icon as any} size={22} color={goal.color} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.goalName} numberOfLines={1}>{goal.name}</Text>
+                  <Text style={[styles.goalName, { color: colors.textPrimary }]} numberOfLines={1}>{goal.name}</Text>
                   {daysLeft !== null && (
-                    <Text style={styles.goalDeadline}>
+                    <Text style={[styles.goalDeadline, { color: colors.textMuted }]}>
                       {isComplete ? 'Goal reached!' :
                         daysLeft === 0 ? 'Deadline today' :
                         `${daysLeft} day${daysLeft !== 1 ? 's' : ''} left`}
@@ -181,14 +191,14 @@ export const SavingsGoalsScreen: React.FC = () => {
 
             <View style={styles.goalStats}>
               <View>
-                <Text style={styles.goalStatLabel}>Saved</Text>
+                <Text style={[styles.goalStatLabel, { color: colors.textMuted }]}>Saved</Text>
                 <Text style={[styles.goalStatValue, { color: goal.color }]}>
                   {formatCurrency(goal.currentAmount)}
                 </Text>
               </View>
               <View style={{ alignItems: 'flex-end' }}>
-                <Text style={styles.goalStatLabel}>Target</Text>
-                <Text style={styles.goalStatValue}>
+                <Text style={[styles.goalStatLabel, { color: colors.textMuted }]}>Target</Text>
+                <Text style={[styles.goalStatValue, { color: colors.textPrimary }]}>
                   {formatCurrency(goal.targetAmount)}
                 </Text>
               </View>
@@ -196,7 +206,7 @@ export const SavingsGoalsScreen: React.FC = () => {
 
             {/* Progress bar */}
             <View style={styles.progressContainer}>
-              <View style={styles.progressBar}>
+              <View style={[styles.progressBar, { backgroundColor: isDark ? 'rgba(108, 99, 255, 0.1)' : `${colors.border}` }]}>
                 <LinearGradient
                   colors={isComplete ? ['#00D68F', '#33E0A8'] : [goal.color, `${goal.color}CC`]}
                   start={{ x: 0, y: 0 }}
@@ -204,13 +214,23 @@ export const SavingsGoalsScreen: React.FC = () => {
                   style={[styles.progressFill, { width: `${Math.min(progress * 100, 100)}%` }]}
                 />
               </View>
-              <Text style={styles.progressText}>{Math.round(progress * 100)}%</Text>
+              <Text style={[styles.progressText, { color: colors.textSecondary }]}>{Math.round(progress * 100)}%</Text>
             </View>
+
+            {/* Auto-contribution badge */}
+            {goal.autoContributionMonthly && goal.autoContributionMonthly > 0 && !isComplete && (
+              <View style={[styles.autoBadge, { backgroundColor: `${goal.color}15` }]}>
+                <MaterialIcons name="autorenew" size={12} color={goal.color} />
+                <Text style={[styles.autoBadgeText, { color: goal.color }]}>
+                  Auto: {formatCurrency(goal.autoContributionMonthly)}/mo
+                </Text>
+              </View>
+            )}
 
             {/* Monthly needed + Add funds */}
             <View style={styles.goalFooter}>
               {monthlyNeeded !== null && !isComplete && (
-                <Text style={styles.monthlyNeeded}>
+                <Text style={[styles.monthlyNeeded, { color: colors.textMuted }]}>
                   ~{formatCurrency(monthlyNeeded)}/mo needed
                 </Text>
               )}
@@ -238,10 +258,10 @@ export const SavingsGoalsScreen: React.FC = () => {
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-          <MaterialIcons name="arrow-back" size={24} color={COLORS.textPrimary} />
+        <TouchableOpacity style={[styles.backBtn, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={() => navigation.goBack()}>
+          <MaterialIcons name="arrow-back" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Savings Goals</Text>
+        <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Savings Goals</Text>
         <TouchableOpacity style={styles.addBtn} onPress={() => openModal()}>
           <LinearGradient colors={['#6C63FF', '#BB8FCE']} style={styles.addBtnGradient}>
             <MaterialIcons name="add" size={20} color="#FFF" />
@@ -261,15 +281,15 @@ export const SavingsGoalsScreen: React.FC = () => {
               <MaterialIcons name="savings" size={26} color={COLORS.success} />
             </View>
             <View style={styles.summaryInfo}>
-              <Text style={styles.summaryLabel}>Total Saved</Text>
-              <Text style={[styles.summaryCount, { color: COLORS.success }]}>
+              <Text style={[styles.summaryLabel, { color: colors.textMuted }]}>Total Saved</Text>
+              <Text style={[styles.summaryCount, { color: colors.success }]}>
                 {formatCurrency(totalSaved)}
               </Text>
             </View>
-            <View style={styles.summaryDivider} />
+            <View style={[styles.summaryDivider, { backgroundColor: colors.border }]} />
             <View style={styles.summaryInfo}>
-              <Text style={styles.summaryLabel}>Total Target</Text>
-              <Text style={styles.summaryCount}>{formatCurrency(totalTarget)}</Text>
+              <Text style={[styles.summaryLabel, { color: colors.textMuted }]}>Total Target</Text>
+              <Text style={[styles.summaryCount, { color: colors.textPrimary }]}>{formatCurrency(totalTarget)}</Text>
             </View>
           </View>
         </GlassCard>
@@ -279,11 +299,11 @@ export const SavingsGoalsScreen: React.FC = () => {
 
         {savingsGoals.length === 0 && (
           <View style={styles.emptyState}>
-            <View style={styles.emptyIcon}>
-              <MaterialIcons name="savings" size={48} color={COLORS.textMuted} />
+            <View style={[styles.emptyIcon, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <MaterialIcons name="savings" size={48} color={colors.textMuted} />
             </View>
-            <Text style={styles.emptyTitle}>No savings goals yet</Text>
-            <Text style={styles.emptySubtext}>
+            <Text style={[styles.emptyTitle, { color: colors.textPrimary }]}>No savings goals yet</Text>
+            <Text style={[styles.emptySubtext, { color: colors.textMuted }]}>
               Create a goal to start saving toward something specific, like a vacation or emergency fund.
             </Text>
             <TouchableOpacity style={styles.emptyBtn} onPress={() => openModal()}>
@@ -305,59 +325,76 @@ export const SavingsGoalsScreen: React.FC = () => {
         presentationStyle="pageSheet"
         onRequestClose={() => setModalVisible(false)}
       >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalHeader}>
+        <View style={[styles.modalContainer, { backgroundColor: colors.background }]}>
+          <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
             <TouchableOpacity onPress={() => setModalVisible(false)}>
-              <Text style={styles.modalCancel}>Cancel</Text>
+              <Text style={[styles.modalCancel, { color: colors.textMuted }]}>Cancel</Text>
             </TouchableOpacity>
-            <Text style={styles.modalTitle}>
+            <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>
               {editingGoal ? 'Edit Goal' : 'New Goal'}
             </Text>
             <TouchableOpacity onPress={handleSave}>
-              <Text style={styles.modalSave}>Save</Text>
+              <Text style={[styles.modalSave, { color: colors.primary }]}>Save</Text>
             </TouchableOpacity>
           </View>
 
           <ScrollView contentContainerStyle={styles.modalContent}>
-            <Text style={styles.modalLabel}>Goal Name</Text>
+            <Text style={[styles.modalLabel, { color: colors.textMuted }]}>Goal Name</Text>
             <TextInput
-              style={styles.modalInput}
+              style={[styles.modalInput, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.textPrimary }]}
               value={name}
               onChangeText={setName}
               placeholder="e.g., Vacation, Emergency Fund"
-              placeholderTextColor={COLORS.textMuted}
+              placeholderTextColor={colors.textMuted}
               autoFocus
             />
 
-            <Text style={styles.modalLabel}>Target Amount</Text>
-            <View style={styles.modalAmountRow}>
-              <Text style={styles.modalCurrency}>{currencySymbol}</Text>
+            <Text style={[styles.modalLabel, { color: colors.textMuted }]}>Target Amount</Text>
+            <View style={[styles.modalAmountRow, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <Text style={[styles.modalCurrency, { color: colors.primary }]}>{currencySymbol}</Text>
               <TextInput
-                style={styles.modalAmountInput}
+                style={[styles.modalAmountInput, { color: colors.textPrimary }]}
                 value={targetAmount}
                 onChangeText={setTargetAmount}
                 placeholder="5,000"
-                placeholderTextColor={COLORS.textMuted}
+                placeholderTextColor={colors.textMuted}
                 keyboardType="decimal-pad"
               />
             </View>
 
-            <Text style={styles.modalLabel}>Deadline (Optional)</Text>
+            <Text style={[styles.modalLabel, { color: colors.textMuted }]}>Deadline (Optional)</Text>
             <TextInput
-              style={styles.modalInput}
+              style={[styles.modalInput, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.textPrimary }]}
               value={deadline}
               onChangeText={setDeadline}
               placeholder="YYYY-MM-DD"
-              placeholderTextColor={COLORS.textMuted}
+              placeholderTextColor={colors.textMuted}
             />
 
-            <Text style={styles.modalLabel}>Icon</Text>
+            <Text style={[styles.modalLabel, { color: colors.textMuted }]}>Auto-contribution / month (Optional)</Text>
+            <View style={[styles.modalAmountRow, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <Text style={[styles.modalCurrency, { color: colors.primary }]}>{currencySymbol}</Text>
+              <TextInput
+                style={[styles.modalAmountInput, { color: colors.textPrimary }]}
+                value={autoContribution}
+                onChangeText={setAutoContribution}
+                placeholder="0"
+                placeholderTextColor={colors.textMuted}
+                keyboardType="decimal-pad"
+              />
+            </View>
+            <Text style={{ fontSize: FONT_SIZE.xs, color: colors.textMuted, marginTop: -SPACING.sm, marginBottom: SPACING.md }}>
+              Automatically added once per month when you open the app.
+            </Text>
+
+            <Text style={[styles.modalLabel, { color: colors.textMuted }]}>Icon</Text>
             <View style={styles.iconGrid}>
               {GOAL_ICONS.map((icon) => (
                 <TouchableOpacity
                   key={icon}
                   style={[
                     styles.iconItem,
+                    { backgroundColor: colors.surface, borderColor: colors.border },
                     selectedIcon === icon && { borderColor: selectedColor, backgroundColor: `${selectedColor}20` },
                   ]}
                   onPress={() => setSelectedIcon(icon)}
@@ -365,7 +402,7 @@ export const SavingsGoalsScreen: React.FC = () => {
                   <MaterialIcons
                     name={icon as any}
                     size={22}
-                    color={selectedIcon === icon ? selectedColor : COLORS.textMuted}
+                    color={selectedIcon === icon ? selectedColor : colors.textMuted}
                   />
                 </TouchableOpacity>
               ))}
@@ -379,7 +416,7 @@ export const SavingsGoalsScreen: React.FC = () => {
                   style={[
                     styles.colorItem,
                     { backgroundColor: color },
-                    selectedColor === color && styles.colorItemSelected,
+                    selectedColor === color && [styles.colorItemSelected, { borderColor: isDark ? 'rgba(255, 255, 255, 0.5)' : 'rgba(0, 0, 0, 0.3)' }],
                   ]}
                   onPress={() => setSelectedColor(color)}
                 >
@@ -405,28 +442,28 @@ export const SavingsGoalsScreen: React.FC = () => {
           activeOpacity={1}
           onPress={() => setAddFundsModal(false)}
         >
-          <View style={styles.fundsContainer} onStartShouldSetResponder={() => true}>
-            <Text style={styles.fundsTitle}>
+          <View style={[styles.fundsContainer, { backgroundColor: colors.backgroundCard, borderColor: colors.border }]} onStartShouldSetResponder={() => true}>
+            <Text style={[styles.fundsTitle, { color: colors.textPrimary }]}>
               Add to "{addFundsGoal?.name}"
             </Text>
-            <View style={styles.fundsInputRow}>
+            <View style={[styles.fundsInputRow, { backgroundColor: colors.surface, borderColor: colors.border }]}>
               <Text style={styles.fundsCurrency}>{currencySymbol}</Text>
               <TextInput
-                style={styles.fundsInput}
+                style={[styles.fundsInput, { color: colors.textPrimary }]}
                 value={fundsAmount}
                 onChangeText={setFundsAmount}
                 placeholder="0.00"
-                placeholderTextColor={COLORS.textMuted}
+                placeholderTextColor={colors.textMuted}
                 keyboardType="decimal-pad"
                 autoFocus
               />
             </View>
             <View style={styles.fundsActions}>
               <TouchableOpacity
-                style={styles.fundsCancelBtn}
+                style={[styles.fundsCancelBtn, { borderColor: colors.border }]}
                 onPress={() => setAddFundsModal(false)}
               >
-                <Text style={styles.fundsCancelText}>Cancel</Text>
+                <Text style={[styles.fundsCancelText, { color: colors.textMuted }]}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.fundsSaveBtn} onPress={handleAddFunds}>
                 <LinearGradient
@@ -453,23 +490,29 @@ export const SavingsGoalsScreen: React.FC = () => {
           activeOpacity={1}
           onPress={() => setShowDeleteConfirm(false)}
         >
-          <View style={styles.deleteContainer}>
-            <Text style={styles.deleteTitle}>Delete Goal</Text>
-            <Text style={styles.deleteMessage}>
+          <View style={[styles.deleteContainer, { backgroundColor: colors.surface }]}>
+            <Text style={[styles.deleteTitle, { color: colors.textPrimary }]}>Delete Goal</Text>
+            <Text style={[styles.deleteMessage, { color: colors.textSecondary }]}>
               Delete "{goalToDelete?.name}"? This cannot be undone.
             </Text>
             <View style={styles.deleteButtons}>
               <TouchableOpacity
-                style={styles.deleteCancelBtn}
+                style={[styles.deleteCancelBtn, { backgroundColor: colors.background }]}
                 onPress={() => setShowDeleteConfirm(false)}
               >
-                <Text style={styles.deleteCancelText}>Cancel</Text>
+                <Text style={[styles.deleteCancelText, { color: colors.textSecondary }]}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.deleteConfirmBtn}
                 onPress={() => {
                   if (goalToDelete) {
-                    deleteSavingsGoal(goalToDelete.id);
+                    const snapshot = goalToDelete;
+                    deleteSavingsGoal(snapshot.id);
+                    showUndo({
+                      message: `Goal "${snapshot.name}" deleted`,
+                      entityType: 'goal',
+                      restore: () => addSavingsGoalWithId(snapshot),
+                    });
                     setShowDeleteConfirm(false);
                     setGoalToDelete(null);
                   }
@@ -665,6 +708,20 @@ const styles = StyleSheet.create({
     fontSize: FONT_SIZE.sm,
     color: COLORS.textMuted,
     fontWeight: '500',
+  },
+  autoBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: BORDER_RADIUS.round,
+    gap: 4,
+    marginBottom: SPACING.sm,
+  },
+  autoBadgeText: {
+    fontSize: FONT_SIZE.xs,
+    fontWeight: '700',
   },
   addFundsBtn: {
     flexDirection: 'row',

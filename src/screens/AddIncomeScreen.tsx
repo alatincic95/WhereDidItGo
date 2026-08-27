@@ -30,7 +30,9 @@ import {
   INCOME_SOURCE_ICONS,
   INCOME_SOURCE_COLORS,
   IncomeSource,
+  RecurringFrequency,
 } from '../types';
+import { useUndoStore } from '../store/useUndoStore';
 
 export const AddIncomeScreen: React.FC = () => {
   const { colors, isDark } = useTheme();
@@ -38,7 +40,31 @@ export const AddIncomeScreen: React.FC = () => {
   const route = useRoute<any>();
   const editingIncome: Income | undefined = route.params?.income;
 
-  const { addIncome, updateIncome, deleteIncome, currencySymbol } = useExpenseStore();
+  const { addIncome, addIncomeWithId, updateIncome, deleteIncome, convertIncomeToRecurring, currencySymbol } = useExpenseStore();
+  const showUndo = useUndoStore((s) => s.show);
+
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showConvertModal, setShowConvertModal] = useState(false);
+  const [convertFrequency, setConvertFrequency] = useState<RecurringFrequency>('monthly');
+
+  const performDelete = () => {
+    if (!editingIncome) return;
+    const snapshot = editingIncome;
+    deleteIncome(snapshot.id);
+    showUndo({
+      message: 'Income deleted',
+      entityType: 'income',
+      restore: () => addIncomeWithId(snapshot),
+    });
+    navigation.goBack();
+  };
+
+  const handleConvertToRecurring = () => {
+    if (!editingIncome) return;
+    convertIncomeToRecurring(editingIncome.id, convertFrequency);
+    setShowConvertModal(false);
+    navigation.goBack();
+  };
 
   const [amount, setAmount] = useState(editingIncome?.amount?.toString() || '');
   const [source, setSource] = useState<string>(editingIncome?.source || '');
@@ -119,12 +145,12 @@ export const AddIncomeScreen: React.FC = () => {
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity
-            style={styles.backBtn}
+            style={[styles.backBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
             onPress={() => navigation.goBack()}
           >
-            <MaterialIcons name="arrow-back" size={24} color={COLORS.textPrimary} />
+            <MaterialIcons name="arrow-back" size={24} color={colors.textPrimary} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>
+          <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>
             {editingIncome ? 'Edit Income' : 'New Income'}
           </Text>
           <View style={{ width: 44 }} />
@@ -144,15 +170,15 @@ export const AddIncomeScreen: React.FC = () => {
               },
             ]}
           >
-            <Text style={styles.amountLabel}>Amount</Text>
+            <Text style={[styles.amountLabel, { color: colors.textMuted }]}>Amount</Text>
             <View style={styles.amountRow}>
               <Text style={styles.currencySymbol}>{currencySymbol}</Text>
               <TextInput
-                style={styles.amountInput}
+                style={[styles.amountInput, { color: colors.textPrimary }]}
                 value={amount}
                 onChangeText={setAmount}
                 placeholder="0.00"
-                placeholderTextColor={COLORS.textMuted}
+                placeholderTextColor={colors.textMuted}
                 keyboardType="decimal-pad"
                 onFocus={handleAmountFocus}
                 onBlur={handleAmountBlur}
@@ -175,7 +201,7 @@ export const AddIncomeScreen: React.FC = () => {
               transform: [{ translateY: slideAnim }],
             }}
           >
-            <Text style={styles.sectionLabel}>Source</Text>
+            <Text style={[styles.sectionLabel, { color: colors.textMuted }]}>Source</Text>
             <View style={styles.sourceGrid}>
               {INCOME_SOURCES.map((src) => {
                 const isSelected = source === src;
@@ -187,6 +213,7 @@ export const AddIncomeScreen: React.FC = () => {
                     key={src}
                     style={[
                       styles.sourceItem,
+                      { backgroundColor: colors.surface, borderColor: colors.border },
                       isSelected && {
                         borderColor: color,
                         backgroundColor: `${color}15`,
@@ -199,19 +226,20 @@ export const AddIncomeScreen: React.FC = () => {
                       style={[
                         styles.sourceIconWrap,
                         {
-                          backgroundColor: isSelected ? `${color}25` : 'rgba(255,255,255,0.04)',
+                          backgroundColor: isSelected ? `${color}25` : `${colors.textMuted}10`,
                         },
                       ]}
                     >
                       <MaterialIcons
                         name={icon as any}
                         size={22}
-                        color={isSelected ? color : COLORS.textMuted}
+                        color={isSelected ? color : colors.textMuted}
                       />
                     </View>
                     <Text
                       style={[
                         styles.sourceText,
+                        { color: colors.textSecondary },
                         isSelected && { color },
                       ]}
                     >
@@ -233,15 +261,15 @@ export const AddIncomeScreen: React.FC = () => {
               transform: [{ translateY: slideAnim }],
             }}
           >
-            <Text style={styles.sectionLabel}>Description</Text>
-            <View style={styles.inputContainer}>
-              <MaterialIcons name="notes" size={20} color={COLORS.textMuted} />
+            <Text style={[styles.sectionLabel, { color: colors.textMuted }]}>Description</Text>
+            <View style={[styles.inputContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <MaterialIcons name="notes" size={20} color={colors.textMuted} />
               <TextInput
-                style={styles.textInput}
+                style={[styles.textInput, { color: colors.textPrimary }]}
                 value={description}
                 onChangeText={setDescription}
                 placeholder="Where did this income come from?"
-                placeholderTextColor={COLORS.textMuted}
+                placeholderTextColor={colors.textMuted}
                 multiline
               />
             </View>
@@ -254,14 +282,14 @@ export const AddIncomeScreen: React.FC = () => {
               transform: [{ translateY: slideAnim }],
             }}
           >
-            <Text style={styles.sectionLabel}>Date</Text>
+            <Text style={[styles.sectionLabel, { color: colors.textMuted }]}>Date</Text>
             <TouchableOpacity
-              style={styles.inputContainer}
+              style={[styles.inputContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}
               activeOpacity={0.7}
               onPress={() => setShowDatePicker(true)}
             >
-              <MaterialIcons name="calendar-today" size={20} color={COLORS.textMuted} />
-              <Text style={styles.dateText}>
+              <MaterialIcons name="calendar-today" size={20} color={colors.textMuted} />
+              <Text style={[styles.dateText, { color: colors.textPrimary }]}>
                 {date.toLocaleDateString('en-US', {
                   weekday: 'long',
                   year: 'numeric',
@@ -272,18 +300,27 @@ export const AddIncomeScreen: React.FC = () => {
             </TouchableOpacity>
           </Animated.View>
 
+          {/* Convert to Recurring (edit mode only) */}
+          {editingIncome && (
+            <TouchableOpacity
+              style={[styles.convertBtn, { borderColor: `${colors.primary}4D`, backgroundColor: `${colors.primary}14` }]}
+              activeOpacity={0.8}
+              onPress={() => setShowConvertModal(true)}
+            >
+              <MaterialIcons name="autorenew" size={20} color={colors.primary} />
+              <Text style={[styles.convertBtnText, { color: colors.primary }]}>Convert to Recurring</Text>
+            </TouchableOpacity>
+          )}
+
           {/* Delete Button (inside scroll) */}
           {editingIncome && (
             <TouchableOpacity
-              style={styles.deleteBtn}
+              style={[styles.deleteBtn, { borderColor: `${colors.danger}4D`, backgroundColor: `${colors.danger}14` }]}
               activeOpacity={0.8}
-              onPress={() => {
-                deleteIncome(editingIncome.id);
-                navigation.goBack();
-              }}
+              onPress={() => setShowDeleteConfirm(true)}
             >
-              <MaterialIcons name="delete-outline" size={20} color={COLORS.danger} />
-              <Text style={styles.deleteBtnText}>Delete Income</Text>
+              <MaterialIcons name="delete-outline" size={20} color={colors.danger} />
+              <Text style={[styles.deleteBtnText, { color: colors.danger }]}>Delete Income</Text>
             </TouchableOpacity>
           )}
 
@@ -303,37 +340,37 @@ export const AddIncomeScreen: React.FC = () => {
           activeOpacity={1}
           onPress={() => setShowDatePicker(false)}
         >
-          <View style={styles.datePickerContainer}>
-            <Text style={styles.datePickerTitle}>Select Date</Text>
+          <View style={[styles.datePickerContainer, { backgroundColor: colors.backgroundCard, borderColor: colors.border }]}>
+            <Text style={[styles.datePickerTitle, { color: colors.textPrimary }]}>Select Date</Text>
             <View style={styles.datePickerRow}>
               <TouchableOpacity
-                style={styles.datePickerArrow}
+                style={[styles.datePickerArrow, { backgroundColor: colors.surface }]}
                 onPress={() => setDate(new Date(date.getTime() - 86400000))}
               >
-                <MaterialIcons name="chevron-left" size={28} color={COLORS.textPrimary} />
+                <MaterialIcons name="chevron-left" size={28} color={colors.textPrimary} />
               </TouchableOpacity>
-              <Text style={styles.datePickerValue}>
+              <Text style={[styles.datePickerValue, { color: colors.textPrimary }]}>
                 {date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
               </Text>
               <TouchableOpacity
-                style={styles.datePickerArrow}
+                style={[styles.datePickerArrow, { backgroundColor: colors.surface }]}
                 onPress={() => setDate(new Date(date.getTime() + 86400000))}
               >
-                <MaterialIcons name="chevron-right" size={28} color={COLORS.textPrimary} />
+                <MaterialIcons name="chevron-right" size={28} color={colors.textPrimary} />
               </TouchableOpacity>
             </View>
             <View style={styles.datePickerQuick}>
               <TouchableOpacity
-                style={styles.datePickerQuickBtn}
+                style={[styles.datePickerQuickBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
                 onPress={() => setDate(new Date())}
               >
-                <Text style={styles.datePickerQuickText}>Today</Text>
+                <Text style={[styles.datePickerQuickText, { color: colors.textSecondary }]}>Today</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={styles.datePickerQuickBtn}
+                style={[styles.datePickerQuickBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
                 onPress={() => setDate(new Date(Date.now() - 86400000))}
               >
-                <Text style={styles.datePickerQuickText}>Yesterday</Text>
+                <Text style={[styles.datePickerQuickText, { color: colors.textSecondary }]}>Yesterday</Text>
               </TouchableOpacity>
             </View>
             <TouchableOpacity
@@ -346,34 +383,95 @@ export const AddIncomeScreen: React.FC = () => {
         </TouchableOpacity>
       </Modal>
 
-      {/* Bottom Buttons */}
-      <View style={styles.bottomBar}>
-        {editingIncome && (
-          <TouchableOpacity
-            style={styles.deleteBtn}
-            activeOpacity={0.8}
-            onPress={() => {
-              Alert.alert(
-                'Delete Income',
-                'Are you sure? This cannot be undone.',
-                [
-                  { text: 'Cancel', style: 'cancel' },
-                  {
-                    text: 'Delete',
-                    style: 'destructive',
-                    onPress: () => {
-                      deleteIncome(editingIncome.id);
-                      navigation.goBack();
-                    },
-                  },
-                ]
-              );
-            }}
-          >
-            <MaterialIcons name="delete-outline" size={20} color={COLORS.danger} />
-            <Text style={styles.deleteBtnText}>Delete Income</Text>
-          </TouchableOpacity>
-        )}
+      {/* Delete Confirmation Modal */}
+      <Modal
+        visible={showDeleteConfirm}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowDeleteConfirm(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowDeleteConfirm(false)}
+        >
+          <View style={[styles.modalContainer, { backgroundColor: colors.surface }]}>
+            <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>Delete Income</Text>
+            <Text style={[styles.modalMessage, { color: colors.textSecondary }]}>
+              Are you sure you want to delete this income entry? This action can be undone.
+            </Text>
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={[styles.modalCancelBtn, { backgroundColor: colors.background }]}
+                onPress={() => setShowDeleteConfirm(false)}
+              >
+                <Text style={[styles.modalCancelText, { color: colors.textSecondary }]}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalDeleteBtn, { backgroundColor: `${colors.danger}18` }]}
+                onPress={() => { setShowDeleteConfirm(false); performDelete(); }}
+              >
+                <Text style={[styles.modalDeleteText, { color: colors.danger }]}>Delete</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* Convert to Recurring Modal */}
+      <Modal
+        visible={showConvertModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowConvertModal(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowConvertModal(false)}
+        >
+          <View style={[styles.modalContainer, { backgroundColor: colors.surface }]} onStartShouldSetResponder={() => true}>
+            <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>Convert to Recurring</Text>
+            <Text style={[styles.modalMessage, { color: colors.textSecondary }]}>
+              This income will be moved to your recurring list and removed from one-time income. Choose how often it repeats.
+            </Text>
+            <View style={styles.freqRow}>
+              {(['weekly', 'biweekly', 'monthly', 'quarterly', 'yearly'] as RecurringFrequency[]).map((f) => {
+                const labels: Record<RecurringFrequency, string> = { weekly: 'Wk', biweekly: '2Wk', monthly: 'Mo', quarterly: 'Qt', yearly: 'Yr' };
+                const isSel = convertFrequency === f;
+                return (
+                  <TouchableOpacity
+                    key={f}
+                    style={[styles.freqChip, { backgroundColor: colors.background, borderColor: colors.border }, isSel && { backgroundColor: colors.primary, borderColor: colors.primary }]}
+                    onPress={() => setConvertFrequency(f)}
+                  >
+                    <Text style={[styles.freqChipText, { color: colors.textMuted }, isSel && { color: '#FFF' }]}>
+                      {labels[f]}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={[styles.modalCancelBtn, { backgroundColor: colors.background }]}
+                onPress={() => setShowConvertModal(false)}
+              >
+                <Text style={[styles.modalCancelText, { color: colors.textSecondary }]}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalDeleteBtn, { backgroundColor: `${colors.primary}20` }]}
+                onPress={handleConvertToRecurring}
+              >
+                <Text style={[styles.modalDeleteText, { color: colors.primary }]}>Convert</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* Save Button */}
+      <View style={[styles.bottomBar, { backgroundColor: colors.background, borderTopColor: colors.border }]}>
         <TouchableOpacity
           style={styles.saveBtn}
           activeOpacity={0.8}
@@ -614,19 +712,99 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
 
-  // Bottom Buttons
+  // Convert to Recurring
+  convertBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: SPACING.md,
+    marginTop: SPACING.xl,
+    borderRadius: BORDER_RADIUS.md,
+    borderWidth: 1,
+    gap: SPACING.sm,
+  },
+  convertBtnText: {
+    fontSize: FONT_SIZE.md,
+    fontWeight: '700',
+  },
+
+  // Delete
   deleteBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: SPACING.sm + 2,
-    marginBottom: SPACING.sm,
-    gap: SPACING.xs,
+    paddingVertical: SPACING.md,
+    marginTop: SPACING.sm,
+    borderRadius: BORDER_RADIUS.md,
+    borderWidth: 1,
+    gap: SPACING.sm,
   },
   deleteBtnText: {
     fontSize: FONT_SIZE.md,
-    color: COLORS.danger,
     fontWeight: '600',
+  },
+
+  // Modals
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContainer: {
+    borderRadius: BORDER_RADIUS.lg,
+    padding: SPACING.xl,
+    width: '85%',
+    maxWidth: 360,
+  },
+  modalTitle: {
+    fontSize: FONT_SIZE.lg,
+    fontWeight: '700',
+    marginBottom: SPACING.sm,
+  },
+  modalMessage: {
+    fontSize: FONT_SIZE.md,
+    marginBottom: SPACING.xl,
+    lineHeight: 22,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: SPACING.md,
+  },
+  modalCancelBtn: {
+    paddingVertical: SPACING.sm,
+    paddingHorizontal: SPACING.lg,
+    borderRadius: BORDER_RADIUS.md,
+  },
+  modalCancelText: {
+    fontSize: FONT_SIZE.md,
+    fontWeight: '600',
+  },
+  modalDeleteBtn: {
+    paddingVertical: SPACING.sm,
+    paddingHorizontal: SPACING.lg,
+    borderRadius: BORDER_RADIUS.md,
+  },
+  modalDeleteText: {
+    fontSize: FONT_SIZE.md,
+    fontWeight: '600',
+  },
+  freqRow: {
+    flexDirection: 'row',
+    gap: SPACING.sm,
+    marginBottom: SPACING.xl,
+  },
+  freqChip: {
+    flex: 1,
+    paddingVertical: SPACING.sm,
+    borderRadius: BORDER_RADIUS.round,
+    borderWidth: 1,
+    alignItems: 'center',
+  },
+  freqChipText: {
+    fontSize: FONT_SIZE.sm,
+    fontWeight: '700',
   },
   bottomBar: {
     position: 'absolute',

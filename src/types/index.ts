@@ -9,6 +9,14 @@ export interface Expense {
   isPending?: boolean; // if true, not deducted from budget until marked complete
   currency?: string; // ISO currency code, e.g. 'EUR'. If absent, uses base currency
   receiptUri?: string; // local URI to receipt photo
+  tags?: string[]; // cross-cutting labels (e.g., "Vacation", "Tax-deductible")
+  splits?: ExpenseSplit[]; // optional split across categories/budgets; sum equals amount
+}
+
+export interface ExpenseSplit {
+  category: string;
+  amount: number; // in expense's currency
+  projectId?: string;
 }
 
 export interface ExchangeRate {
@@ -162,6 +170,8 @@ export interface FixedExpense {
   category: string;
   description: string;
   frequency?: RecurringFrequency; // defaults to 'monthly' if absent (backward compat)
+  startDate?: string; // YYYY-MM-DD when this recurring item was created
+  lastProcessedDate?: string; // YYYY-MM-DD of last auto-generated expense
 }
 
 export interface FixedIncome {
@@ -170,6 +180,8 @@ export interface FixedIncome {
   source: string;
   description: string;
   frequency?: RecurringFrequency; // defaults to 'monthly' if absent (backward compat)
+  startDate?: string; // YYYY-MM-DD when this recurring item was created
+  lastProcessedDate?: string; // YYYY-MM-DD of last auto-generated income
 }
 
 export interface SavingsGoal {
@@ -181,6 +193,8 @@ export interface SavingsGoal {
   color: string;
   icon: string;
   createdAt: string;
+  autoContributionMonthly?: number; // optional auto-allocation per month (base currency)
+  lastAutoContribution?: string; // YYYY-MM of the last processed auto-contribution
 }
 
 export interface BudgetTemplate {
@@ -193,11 +207,50 @@ export interface BudgetTemplate {
   createdAt: string;
 }
 
+export type DashboardCardId = 'summary' | 'budgetUsage' | 'categories' | 'quickActions' | 'recentTransactions';
+
+export interface DashboardCardConfig {
+  id: DashboardCardId;
+  visible: boolean;
+}
+
+export const DEFAULT_DASHBOARD_CARDS: DashboardCardConfig[] = [
+  { id: 'summary', visible: true },
+  { id: 'budgetUsage', visible: true },
+  { id: 'categories', visible: true },
+  { id: 'quickActions', visible: true },
+  { id: 'recentTransactions', visible: true },
+];
+
+export const DASHBOARD_CARD_LABELS: Record<DashboardCardId, string> = {
+  summary: 'Summary Cards',
+  budgetUsage: 'Budget Usage',
+  categories: 'Top Categories',
+  quickActions: 'Quick Actions',
+  recentTransactions: 'Recent Transactions',
+};
+
+export const DASHBOARD_CARD_ICONS: Record<DashboardCardId, string> = {
+  summary: 'account-balance',
+  budgetUsage: 'donut-small',
+  categories: 'category',
+  quickActions: 'flash-on',
+  recentTransactions: 'receipt-long',
+};
+
 export interface MonthlySummary {
   month: string; // YYYY-MM
   totalExpenses: number;
   totalFixedExpenses: number;
   netBalance: number;
+}
+
+export type TrendTimeRange = '6m' | '12m' | 'yoy';
+
+export interface YoYMonthData {
+  monthIndex: number;   // 0-11
+  monthLabel: string;   // "Jan", "Feb", ...
+  years: { year: number; expenses: number; income: number }[];
 }
 
 export type ExpenseCategory =
