@@ -80,6 +80,7 @@ export const BudgetFormModal: React.FC<BudgetFormModalProps> = ({
             placeholder="e.g., Summer Trip, New Kitchen"
             placeholderTextColor={colors.textMuted}
             autoFocus
+            maxLength={100}
           />
 
           {/* Description */}
@@ -92,6 +93,7 @@ export const BudgetFormModal: React.FC<BudgetFormModalProps> = ({
             placeholderTextColor={colors.textMuted}
             multiline
             numberOfLines={3}
+            maxLength={200}
           />
 
           {/* Budget */}

@@ -25,6 +25,7 @@ import {
   IncomeSource,
 } from '../types';
 import { formatCurrency } from '../utils/currency';
+import { exportCsv } from '../utils/exportData';
 
 const MONTHS = [
   'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
@@ -66,7 +67,7 @@ export const IncomeListScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
   const route = useRoute();
   const isStackScreen = route.name === 'IncomeList';
-  const { incomes, currencySymbol } = useExpenseStore();
+  const { incomes, expenses, fixedExpenses, fixedIncomes, currencySymbol } = useExpenseStore();
   const [selectedMonth, setSelectedMonth] = useState<number | null>(new Date().getMonth());
   const [selectedYear] = useState(new Date().getFullYear());
   const [filterOpen, setFilterOpen] = useState(false);
@@ -227,6 +228,12 @@ export const IncomeListScreen: React.FC = () => {
             </TouchableOpacity>
           )}
         </View>
+        <TouchableOpacity
+          style={[styles.filterBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
+          onPress={() => exportCsv({ expenses: expenses.filter((e) => !e.isFixed), incomes, fixedExpenses, fixedIncomes })}
+        >
+          <MaterialIcons name="file-download" size={22} color={colors.textMuted} />
+        </TouchableOpacity>
         <TouchableOpacity
           style={[styles.filterBtn, { backgroundColor: colors.surface, borderColor: colors.border }, hasActiveFilters && styles.filterBtnActive]}
           onPress={() => setFilterOpen(true)}

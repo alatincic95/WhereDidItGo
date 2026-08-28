@@ -22,6 +22,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { BUDGET_COLORS, SavingsGoal } from '../types';
 import { formatCurrency } from '../utils/currency';
 import { useUndoStore } from '../store/useUndoStore';
+import { hapticSuccess, hapticError, hapticWarning } from '../utils/haptics';
 import { CalendarPicker } from '../components/CalendarPicker';
 
 const GOAL_ICONS = [
@@ -104,11 +105,13 @@ export const SavingsGoalsScreen: React.FC = () => {
   const handleSave = () => {
     if (!name.trim()) {
       setError('Please enter a goal name');
+      hapticError();
       return;
     }
     const target = parseFloat(targetAmount);
     if (!targetAmount || isNaN(target) || target <= 0) {
       setError('Please enter a valid target amount');
+      hapticError();
       return;
     }
     const autoMonthly = parseFloat(autoContribution);
@@ -134,6 +137,7 @@ export const SavingsGoalsScreen: React.FC = () => {
         autoContributionMonthly: autoVal,
       });
     }
+    hapticSuccess();
     setModalVisible(false);
   };
 
@@ -548,6 +552,7 @@ export const SavingsGoalsScreen: React.FC = () => {
                   if (goalToDelete) {
                     const snapshot = goalToDelete;
                     deleteSavingsGoal(snapshot.id);
+                    hapticWarning();
                     showUndo({
                       message: `Goal "${snapshot.name}" deleted`,
                       entityType: 'goal',

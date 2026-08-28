@@ -37,6 +37,7 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({ onSend, loading, dis
           returnKeyType="send"
           multiline={false}
           editable={!disabled}
+          maxLength={500}
         />
         {loading ? (
           <View style={styles.sendBtn}>

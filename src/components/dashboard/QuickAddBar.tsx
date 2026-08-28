@@ -14,8 +14,10 @@ import { COLORS, SPACING, FONT_SIZE, BORDER_RADIUS } from '../../constants/theme
 import { parseExpenseText, isValidQuickExpense } from '../../utils/nlParser';
 import { suggestCategory } from '../../utils/categorySuggester';
 import { useExpenseStore } from '../../store/useExpenseStore';
+import { useUndoStore } from '../../store/useUndoStore';
 import { CategoryIcon } from '../CategoryIcon';
 import { formatCurrency } from '../../utils/currency';
+import { hapticSuccess } from '../../utils/haptics';
 
 interface QuickAddBarProps {
   onExpenseAdded?: () => void;
@@ -31,7 +33,8 @@ export const QuickAddBar: React.FC<QuickAddBarProps> = ({ onExpenseAdded }) => {
   const successAnim = useRef(new Animated.Value(0)).current;
   const [showSuccess, setShowSuccess] = useState(false);
 
-  const { addExpense, expenses, customCategories } = useExpenseStore();
+  const { addExpense, deleteExpense, addExpenseWithId, expenses, customCategories } = useExpenseStore();
+  const showUndo = useUndoStore((s) => s.show);
 
   const parsed = parseExpenseText(input);
   const isValid = isValidQuickExpense(parsed);
@@ -70,13 +73,26 @@ export const QuickAddBar: React.FC<QuickAddBarProps> = ({ onExpenseAdded }) => {
 
     const category = resolvedCategory || 'Other';
 
-    addExpense({
+    const expenseData = {
       amount: parsed.amount,
       category,
       description: parsed.description || category,
       date: new Date().toISOString(),
       isFixed: false,
-    });
+    };
+
+    addExpense(expenseData);
+    hapticSuccess();
+
+    // Find the just-added expense (first in array after addExpense prepends)
+    const latest = useExpenseStore.getState().expenses[0];
+    if (latest) {
+      showUndo({
+        message: 'Expense added',
+        entityType: 'expense',
+        restore: () => deleteExpense(latest.id),
+      });
+    }
 
     // Success feedback
     setShowSuccess(true);
@@ -128,6 +144,7 @@ export const QuickAddBar: React.FC<QuickAddBarProps> = ({ onExpenseAdded }) => {
           onSubmitEditing={handleSubmit}
           returnKeyType="done"
           autoCorrect={false}
+          maxLength={200}
         />
         {input.length > 0 && (
           <TouchableOpacity

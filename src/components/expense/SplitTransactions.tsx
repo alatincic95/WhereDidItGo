@@ -51,7 +51,10 @@ export const SplitTransactions: React.FC<SplitTransactionsProps> = ({
   const splitsTotal = splits.reduce((s, x) => s + (x.amount || 0), 0);
   const splitsValid = splits.length === 0 || Math.abs(splitsTotal - (parseFloat(amount) || 0)) < 0.01;
 
+  const MAX_SPLITS = 10;
+
   const addSplit = () => {
+    if (splits.length >= MAX_SPLITS) return;
     const { EXPENSE_CATEGORIES } = require('../../types');
     setSplits([...splits, { category: orderedCategories[0] || EXPENSE_CATEGORIES[0], amount: 0 }]);
   };
@@ -69,12 +72,15 @@ export const SplitTransactions: React.FC<SplitTransactionsProps> = ({
       <View style={styles.splitHeaderRow}>
         <Text style={[styles.sectionLabel, { marginTop: 0, marginBottom: 0, color: colors.textMuted }]}>Split (optional)</Text>
         <TouchableOpacity
-          style={[styles.splitAddBtn, { backgroundColor: `${colors.primary}1A`, borderColor: `${colors.primary}4D` }]}
+          style={[styles.splitAddBtn, { backgroundColor: `${colors.primary}1A`, borderColor: `${colors.primary}4D`, opacity: splits.length >= MAX_SPLITS ? 0.4 : 1 }]}
           onPress={addSplit}
           activeOpacity={0.7}
+          disabled={splits.length >= MAX_SPLITS}
         >
           <MaterialIcons name="call-split" size={16} color={colors.primary} />
-          <Text style={[styles.splitAddText, { color: colors.primary }]}>Add Split</Text>
+          <Text style={[styles.splitAddText, { color: colors.primary }]}>
+            {splits.length >= MAX_SPLITS ? `Max ${MAX_SPLITS}` : 'Add Split'}
+          </Text>
         </TouchableOpacity>
       </View>
       {splits.length > 0 && (

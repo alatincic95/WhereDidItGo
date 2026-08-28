@@ -271,7 +271,7 @@ export const DashboardModals: React.FC<DashboardModalsProps> = ({
                     style={styles.exchangeRateAddBtn}
                     onPress={() => {
                       const val = parseFloat(newRateValue);
-                      if (newRateCurrency && !isNaN(val) && val > 0) {
+                      if (newRateCurrency && !isNaN(val) && val >= 0.0001 && val <= 999999) {
                         addExchangeRate({ from: newRateCurrency, rate: val });
                         setNewRateCurrency('');
                         setNewRateValue('');

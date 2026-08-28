@@ -34,6 +34,7 @@ import {
   RecurringFrequency,
 } from '../types';
 import { useUndoStore } from '../store/useUndoStore';
+import { hapticSuccess, hapticError, hapticWarning } from '../utils/haptics';
 import { CalendarPicker } from '../components/CalendarPicker';
 
 export const AddIncomeScreen: React.FC = () => {
@@ -54,6 +55,7 @@ export const AddIncomeScreen: React.FC = () => {
     if (!editingIncome) return;
     const snapshot = editingIncome;
     deleteIncome(snapshot.id);
+    hapticWarning();
     showUndo({
       message: 'Income deleted',
       entityType: 'income',
@@ -117,10 +119,12 @@ export const AddIncomeScreen: React.FC = () => {
   const handleSave = () => {
     if (!amount || isNaN(parseFloat(amount)) || parseFloat(amount) <= 0) {
       setError('Please enter a valid amount');
+      hapticError();
       return;
     }
     if (!source) {
       setError('Please select an income source');
+      hapticError();
       return;
     }
 
@@ -143,6 +147,7 @@ export const AddIncomeScreen: React.FC = () => {
       addIncome(incomeData);
     }
 
+    hapticSuccess();
     navigation.goBack();
   };
 

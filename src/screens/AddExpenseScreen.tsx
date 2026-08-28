@@ -35,6 +35,7 @@ import { suggestCategory } from '../utils/categorySuggester';
 import { scanReceipt } from '../utils/receiptOcr';
 import { hasApiKey } from '../assistant/config';
 import { useUndoStore } from '../store/useUndoStore';
+import { hapticSuccess, hapticError, hapticWarning } from '../utils/haptics';
 import {
   AmountInput,
   CurrencySelector,
@@ -175,10 +176,12 @@ export const AddExpenseScreen: React.FC = () => {
   const handleSave = () => {
     if (!amount || isNaN(parseFloat(amount)) || parseFloat(amount) <= 0) {
       setError('Please enter a valid amount');
+      hapticError();
       return;
     }
     if (!category) {
       setError('Please select a category');
+      hapticError();
       return;
     }
     if (splits.length > 0 && !splitsValid) {
@@ -215,6 +218,7 @@ export const AddExpenseScreen: React.FC = () => {
       addExpense(expenseData);
     }
 
+    hapticSuccess();
     navigation.goBack();
   };
 
@@ -229,6 +233,7 @@ export const AddExpenseScreen: React.FC = () => {
     if (editingExpense) {
       const snapshot = editingExpense;
       deleteExpense(editingExpense.id);
+      hapticWarning();
       showUndo({
         message: 'Expense deleted',
         entityType: 'expense',
@@ -241,12 +246,15 @@ export const AddExpenseScreen: React.FC = () => {
   const handleSaveAsTemplate = () => {
     if (!amount || isNaN(parseFloat(amount)) || parseFloat(amount) <= 0) {
       setError('Enter a valid amount to save as template');
+      hapticError();
       return;
     }
     if (!category) {
       setError('Select a category to save as template');
+      hapticError();
       return;
     }
+    hapticSuccess();
     const name = description.trim() || category;
     addExpenseTemplate({
       name,

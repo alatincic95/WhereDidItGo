@@ -215,6 +215,7 @@ export const NewCategoryModal: React.FC<NewCategoryModalProps> = ({
             placeholder="e.g., Pets, Travel, Gifts"
             placeholderTextColor={colors.textMuted}
             autoFocus
+            maxLength={50}
           />
 
           <Text style={[styles.newCatLabel, { color: colors.textMuted }]}>Icon</Text>

@@ -74,6 +74,7 @@ export const TagsInput: React.FC<TagsInputProps> = ({
           returnKeyType="done"
           placeholder="Add tag (e.g., Vacation, Tax-deductible)"
           placeholderTextColor={colors.textMuted}
+          maxLength={50}
         />
         {tagInput.length > 0 && (
           <TouchableOpacity onPress={() => addTag(tagInput)}>

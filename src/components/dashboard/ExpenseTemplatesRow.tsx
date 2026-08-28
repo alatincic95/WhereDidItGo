@@ -14,6 +14,7 @@ import { useTheme } from '../../contexts/ThemeContext';
 import { getCurrencySymbol } from '../../utils/currency';
 import { CategoryIcon } from '../CategoryIcon';
 import { ExpenseTemplate } from '../../types';
+import { hapticSuccess, hapticWarning, hapticLight } from '../../utils/haptics';
 
 export const ExpenseTemplatesRow: React.FC = () => {
   const { colors } = useTheme();
@@ -30,17 +31,20 @@ export const ExpenseTemplatesRow: React.FC = () => {
 
   const handleTap = (template: ExpenseTemplate) => {
     addExpenseFromTemplate(template.id);
+    hapticSuccess();
     setShowAdded(template.id);
     setTimeout(() => setShowAdded(null), 1500);
   };
 
   const handleLongPress = (template: ExpenseTemplate) => {
+    hapticLight();
     setDeleteTarget(template);
   };
 
   const handleDelete = () => {
     if (deleteTarget) {
       deleteExpenseTemplate(deleteTarget.id);
+      hapticWarning();
       setDeleteTarget(null);
     }
   };

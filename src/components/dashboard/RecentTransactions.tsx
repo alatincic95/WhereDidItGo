@@ -57,7 +57,7 @@ export const RecentTransactions: React.FC<RecentTransactionsProps> = ({
             </View>
           )}
           <View style={styles.transactionInfo}>
-            <Text style={[styles.transactionDesc, { color: colors.textPrimary }]}>
+            <Text style={[styles.transactionDesc, { color: colors.textPrimary }]} numberOfLines={1}>
               {transaction.description || (transaction.type === 'expense' ? (transaction as any).category : (transaction as any).source)}
             </Text>
             <Text style={[styles.transactionDate, { color: colors.textMuted }]}>{formatDate(transaction.date)}</Text>
