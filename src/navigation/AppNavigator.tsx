@@ -22,10 +22,31 @@ import { CategoryBudgetsScreen } from '../screens/CategoryBudgetsScreen';
 import { DashboardCustomizeScreen } from '../screens/DashboardCustomizeScreen';
 import { AssistantScreen } from '../screens/AssistantScreen';
 import { IncomeListScreen } from '../screens/IncomeListScreen';
+import { GlobalSearchScreen } from '../screens/GlobalSearchScreen';
+import { BillCalendarScreen } from '../screens/BillCalendarScreen';
+import { ErrorBoundary } from '../components/ErrorBoundary';
 import { useTheme } from '../contexts/ThemeContext';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
+
+// Wrap screen components with ErrorBoundary
+function withErrorBoundary<P extends object>(
+  Component: React.ComponentType<P>,
+  title: string
+): React.FC<P> {
+  return (props: P) => (
+    <ErrorBoundary fallbackTitle={`${title} failed to load`}>
+      <Component {...props} />
+    </ErrorBoundary>
+  );
+}
+
+const SafeDashboard = withErrorBoundary(DashboardScreen, 'Dashboard');
+const SafeExpenseList = withErrorBoundary(ExpenseListScreen, 'Expenses');
+const SafeIncomeList = withErrorBoundary(IncomeListScreen, 'Income');
+const SafeProjects = withErrorBoundary(ProjectsScreen, 'Budgets');
+const SafeFixedExpenses = withErrorBoundary(FixedExpensesScreen, 'Recurring');
 
 function TabNavigator() {
   const { colors, isDark } = useTheme();
@@ -58,8 +79,9 @@ function TabNavigator() {
     >
       <Tab.Screen
         name="Dashboard"
-        component={DashboardScreen}
+        component={SafeDashboard}
         options={{
+          tabBarAccessibilityLabel: 'Dashboard tab',
           tabBarIcon: ({ color, size }) => (
             <MaterialIcons name="dashboard" size={size} color={color} />
           ),
@@ -67,8 +89,9 @@ function TabNavigator() {
       />
       <Tab.Screen
         name="Expenses"
-        component={ExpenseListScreen}
+        component={SafeExpenseList}
         options={{
+          tabBarAccessibilityLabel: 'Expenses tab',
           tabBarIcon: ({ color, size }) => (
             <MaterialIcons name="receipt-long" size={size} color={color} />
           ),
@@ -76,8 +99,9 @@ function TabNavigator() {
       />
       <Tab.Screen
         name="Income"
-        component={IncomeListScreen}
+        component={SafeIncomeList}
         options={{
+          tabBarAccessibilityLabel: 'Income tab',
           tabBarIcon: ({ color, size }) => (
             <MaterialIcons name="account-balance" size={size} color={color} />
           ),
@@ -85,8 +109,9 @@ function TabNavigator() {
       />
       <Tab.Screen
         name="Budgets"
-        component={ProjectsScreen}
+        component={SafeProjects}
         options={{
+          tabBarAccessibilityLabel: 'Budgets tab',
           tabBarIcon: ({ color, size }) => (
             <MaterialIcons name="account-balance-wallet" size={size} color={color} />
           ),
@@ -94,9 +119,10 @@ function TabNavigator() {
       />
       <Tab.Screen
         name="Fixed"
-        component={FixedExpensesScreen}
+        component={SafeFixedExpenses}
         options={{
           tabBarLabel: 'Recurring',
+          tabBarAccessibilityLabel: 'Recurring expenses and income tab',
           tabBarIcon: ({ color, size }) => (
             <MaterialIcons name="autorenew" size={size} color={color} />
           ),
@@ -106,6 +132,21 @@ function TabNavigator() {
   );
 }
 
+const SafeAddExpense = withErrorBoundary(AddExpenseScreen, 'Add Expense');
+const SafeAddIncome = withErrorBoundary(AddIncomeScreen, 'Add Income');
+const SafeBudgetDetail = withErrorBoundary(ProjectDetailScreen, 'Budget Detail');
+const SafeNotifications = withErrorBoundary(NotificationsScreen, 'Notifications');
+const SafeTrends = withErrorBoundary(TrendsScreen, 'Trends');
+const SafeSavingsGoals = withErrorBoundary(SavingsGoalsScreen, 'Savings Goals');
+const SafeSettings = withErrorBoundary(SettingsScreen, 'Settings');
+const SafeDataTransfer = withErrorBoundary(DataTransferScreen, 'Data Transfer');
+const SafeReorderCategories = withErrorBoundary(ReorderCategoriesScreen, 'Reorder Categories');
+const SafeCategoryBudgets = withErrorBoundary(CategoryBudgetsScreen, 'Category Budgets');
+const SafeDashboardCustomize = withErrorBoundary(DashboardCustomizeScreen, 'Dashboard Customize');
+const SafeAssistant = withErrorBoundary(AssistantScreen, 'Assistant');
+const SafeGlobalSearch = withErrorBoundary(GlobalSearchScreen, 'Search');
+const SafeBillCalendar = withErrorBoundary(BillCalendarScreen, 'Bill Calendar');
+
 export function AppNavigator() {
   return (
     <NavigationContainer>
@@ -113,7 +154,7 @@ export function AppNavigator() {
         <Stack.Screen name="Main" component={TabNavigator} />
         <Stack.Screen
           name="AddExpense"
-          component={AddExpenseScreen}
+          component={SafeAddExpense}
           options={{
             presentation: 'modal',
             animation: 'slide_from_bottom',
@@ -121,7 +162,7 @@ export function AppNavigator() {
         />
         <Stack.Screen
           name="AddIncome"
-          component={AddIncomeScreen}
+          component={SafeAddIncome}
           options={{
             presentation: 'modal',
             animation: 'slide_from_bottom',
@@ -129,80 +170,94 @@ export function AppNavigator() {
         />
         <Stack.Screen
           name="BudgetDetail"
-          component={ProjectDetailScreen}
+          component={SafeBudgetDetail}
           options={{
             animation: 'slide_from_right',
           }}
         />
         <Stack.Screen
           name="Notifications"
-          component={NotificationsScreen}
+          component={SafeNotifications}
           options={{
             animation: 'slide_from_right',
           }}
         />
         <Stack.Screen
           name="Trends"
-          component={TrendsScreen}
+          component={SafeTrends}
           options={{
             animation: 'slide_from_right',
           }}
         />
         <Stack.Screen
           name="SavingsGoals"
-          component={SavingsGoalsScreen}
+          component={SafeSavingsGoals}
           options={{
             animation: 'slide_from_right',
           }}
         />
         <Stack.Screen
           name="Settings"
-          component={SettingsScreen}
+          component={SafeSettings}
           options={{
             animation: 'slide_from_right',
           }}
         />
         <Stack.Screen
           name="DataTransfer"
-          component={DataTransferScreen}
+          component={SafeDataTransfer}
           options={{
             animation: 'slide_from_right',
           }}
         />
         <Stack.Screen
           name="ReorderCategories"
-          component={ReorderCategoriesScreen}
+          component={SafeReorderCategories}
           options={{
             animation: 'slide_from_right',
           }}
         />
         <Stack.Screen
           name="CategoryBudgets"
-          component={CategoryBudgetsScreen}
+          component={SafeCategoryBudgets}
           options={{
             animation: 'slide_from_right',
           }}
         />
         <Stack.Screen
           name="DashboardCustomize"
-          component={DashboardCustomizeScreen}
+          component={SafeDashboardCustomize}
           options={{
             animation: 'slide_from_right',
           }}
         />
         <Stack.Screen
           name="IncomeList"
-          component={IncomeListScreen}
+          component={SafeIncomeList}
           options={{
             animation: 'slide_from_right',
           }}
         />
         <Stack.Screen
           name="Assistant"
-          component={AssistantScreen}
+          component={SafeAssistant}
           options={{
             presentation: 'modal',
             animation: 'slide_from_bottom',
+          }}
+        />
+        <Stack.Screen
+          name="GlobalSearch"
+          component={SafeGlobalSearch}
+          options={{
+            animation: 'slide_from_right',
+          }}
+        />
+        <Stack.Screen
+          name="BillCalendar"
+          component={SafeBillCalendar}
+          options={{
+            animation: 'slide_from_right',
           }}
         />
       </Stack.Navigator>

@@ -35,15 +35,15 @@ export const UndoSnackbar: React.FC = () => {
       pointerEvents="box-none"
       style={[styles.wrap, { opacity, transform: [{ translateY }] }]}
     >
-      <View style={[styles.bar, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+      <View style={[styles.bar, { backgroundColor: colors.surface, borderColor: colors.border }]} accessibilityRole="alert" accessibilityLiveRegion="polite">
         <MaterialIcons name="info-outline" size={20} color={colors.textSecondary} />
         <Text style={[styles.message, { color: colors.textPrimary }]} numberOfLines={1}>
           {current.message}
         </Text>
-        <TouchableOpacity style={styles.actionBtn} onPress={undo} activeOpacity={0.7}>
+        <TouchableOpacity style={styles.actionBtn} onPress={undo} activeOpacity={0.7} accessibilityLabel="Undo" accessibilityRole="button">
           <Text style={[styles.actionText, { color: colors.primary }]}>UNDO</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.closeBtn} onPress={dismiss} activeOpacity={0.7}>
+        <TouchableOpacity style={styles.closeBtn} onPress={dismiss} activeOpacity={0.7} accessibilityLabel="Dismiss" accessibilityRole="button">
           <MaterialIcons name="close" size={18} color={colors.textMuted} />
         </TouchableOpacity>
       </View>

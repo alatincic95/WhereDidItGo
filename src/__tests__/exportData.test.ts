@@ -105,10 +105,15 @@ describe('validateBackup', () => {
     if (!result.valid) expect(result.error).toContain('Not a WhereDidItGo');
   });
 
-  it('rejects backups missing expenses', () => {
-    const result = validateBackup(JSON.stringify({ _meta: { app: 'WhereDidItGo' } }));
-    expect(result.valid).toBe(false);
-    if (!result.valid) expect(result.error).toContain('missing expenses');
+  it('defaults missing arrays to empty and accepts backup', () => {
+    const result = validateBackup(JSON.stringify({ _meta: { app: 'WhereDidItGo', version: 1, exportedAt: '2026-08-01' } }));
+    expect(result.valid).toBe(true);
+    if (result.valid) {
+      expect(result.data.expenses).toEqual([]);
+      expect(result.data.incomes).toEqual([]);
+      expect(result.data.monthlyIncome).toBe(0);
+      expect(result.data.currencySymbol).toBe('$');
+    }
   });
 
   it('accepts valid backup', () => {

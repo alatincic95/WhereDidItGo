@@ -323,11 +323,153 @@ No backend — all data is stored locally on device.
 - Handles rate limiting and invalid key errors gracefully
 - Utility: `src/utils/receiptOcr.ts`
 
+### Global Search
+
+- Unified search across all data types: expenses, income, budgets, recurring items, savings goals
+- Instant filtering with type filter chips (All, Expense, Income, Budget, etc.)
+- Results sorted by date (most recent first)
+- Tap any result to navigate directly to its edit/detail screen
+- Search icon in Dashboard header for quick access
+- Screen: `src/screens/GlobalSearchScreen.tsx`
+
+### Proactive Spending Insights
+
+- Local anomaly detection — no API key required
+- Category spending spikes (2x+ vs last month)
+- Spending pace warning (projected to exceed income)
+- Month-over-month comparison with % change
+- No-spend streak detection
+- New category detection
+- Displayed as insights card on Dashboard below QuickAddBar
+- Utility: `src/utils/spendingInsights.ts`
+
+### Monthly Recap Push Notification
+
+- Scheduled for last day of current month at 8 PM
+- Prompts user to view monthly spending summary
+- Idempotent scheduling via identifier
+- Utility: `scheduleMonthlyRecap()` in `src/utils/localNotifications.ts`
+
+### Recurring Item Pause
+
+- `paused` flag on FixedExpense and FixedIncome
+- Paused items skip auto-processing, balance calculations, and bill calendar
+- Pause/Resume toggle button in recurring item edit modal
+- Visual "Paused" badge (yellow) on list items with reduced opacity
+- Backward compatible: existing items default to not paused
+
+### Date Range Filtering
+
+- YYYY-MM-DD date range inputs in ExpenseListScreen filter modal
+- Works alongside month selector, category filter, amount range, and sort
+- Date range chip shown when active
+
+### Bill Calendar View
+
+- Calendar visualization of upcoming recurring expenses and income
+- Mini calendar grid with dot indicators on bill days
+- Month navigator (prev/next)
+- Summary cards showing total bills due and income due
+- Day-grouped upcoming bills list
+- Accessible via calendar icon in Recurring tab header
+- Screen: `src/screens/BillCalendarScreen.tsx`
+
+### Budget Rollover (Carry-Over)
+
+- `rolloverEnabled` flag per CategoryBudget
+- Unused budget automatically carries to next month
+- Processed on app launch via `processRollovers()`
+- Effective limit = base monthly limit + rollover amount
+- `toggleCategoryBudgetRollover()` action in settings slice
+
+### i18n Preparation
+
+- Translation layer with `t()` function for dot-separated key lookup
+- Full English string catalog covering all screens
+- `setLocale()` for future language support
+- Ships English-only initially
+- Module: `src/i18n/index.ts`
+
+### Error Boundaries
+
+- React error boundaries wrapping every screen (tabs + stack screens)
+- Per-screen crash isolation — one screen failing doesn't take down the app
+- Friendly fallback UI with error message and "Try Again" button
+- `withErrorBoundary()` HOC pattern in AppNavigator for consistent wrapping
+- Component: `src/components/ErrorBoundary.tsx`
+
+### System Theme / Dark Mode Scheduling
+
+- Three theme modes: Dark, Light, System
+- System mode follows device appearance via React Native `Appearance` API
+- Listens for system appearance changes in real-time
+- Theme selector in Settings replaces simple dark mode toggle
+- `ThemeMode` type updated to `'light' | 'dark' | 'system'`
+- ThemeContext resolves system mode to actual dark/light based on `Appearance.getColorScheme()`
+- `setMode()` exposed via `useTheme()` hook alongside existing `toggle()`
+
+### Auto-Backup Reminder
+
+- Optional weekly notification reminding users to back up their data
+- Toggle in Settings → Data section (requires push notifications to be enabled)
+- Tracks `lastBackupDate` in store — updated when cloud or file backup succeeds
+- Schedules notification 7 days after last backup (or 1 day if never backed up)
+- `autoBackupReminder` and `lastBackupDate` persisted in settings slice
+- Notification utility: `scheduleBackupReminder()` in `src/utils/localNotifications.ts`
+
+### Undo for Edits
+
+- Undo snackbar appears after editing an expense or income (not just deleting)
+- Captures pre-edit state and restores it on undo
+- Same 5-second window as delete undo
+- Leverages existing `useUndoStore` with generic `restore` callback pattern
+
+### Navigate Recurring Entry to Parent
+
+- Tapping an auto-generated recurring expense in the Expenses list navigates to the Recurring tab
+- Previously these items were non-interactive — now users can quickly find and manage the parent item
+
+### Bulk Operations
+
+- Long-press any expense in the list to enter multi-select mode
+- Selection bar shows count and bulk action buttons
+- Bulk delete: removes all selected expenses with undo support
+- Bulk re-categorize: move all selected expenses to a new category with undo support
+- Selection checkboxes appear on each expense item in selection mode
+- Close selection mode via X button in selection bar
+
+### Empty State Guidance
+
+- Enhanced empty states across all screens with actionable hints
+- Expenses: mentions Quick Add and long-press bulk actions
+- Income: mentions recurring income setup
+- Recurring expenses: explains convert-from-expense flow
+- Recurring income: explains convert-from-income flow
+- Budgets and Savings Goals: already had good CTAs (unchanged)
+
+### Accessibility
+
+- Tab bar items have `tabBarAccessibilityLabel` for screen readers
+- Dashboard header buttons (search, notifications, settings, menu) have `accessibilityLabel` and `accessibilityRole`
+- FABs on Expenses and Income screens have `accessibilityLabel`
+- Settings back button has `accessibilityLabel`
+- Undo snackbar has `accessibilityRole="alert"` and `accessibilityLiveRegion="polite"`
+- Undo/dismiss buttons have proper `accessibilityLabel` and `accessibilityRole`
+
+### Currency Auto-Fetch
+
+- One-tap exchange rate sync from Settings
+- Fetches latest rates from free open-source currency API (fawazahmed0/currency-api)
+- Automatically detects base currency from user's currencySymbol setting
+- Updates all exchange rates for the 14 supported currencies
+- Loading/success/error states shown inline on the button
+- Utility: `src/utils/currencyFetch.ts` with `fetchExchangeRates()` and `syncExchangeRates()`
+
 ### Data Persistence
 
 - Zustand persist middleware + AsyncStorage
 - Migration support (projects → budgets key rename)
-- Persisted state includes: expenses, fixedExpenses, incomes, fixedIncomes, budgets, customCategories, categoryOrder, categoryBudgets, dashboardCards, exchangeRates, savingsGoals, budgetTemplates, themeMode, biometricEnabled, pushNotificationsEnabled, onboardingCompleted, settings
+- Persisted state includes: expenses, fixedExpenses, incomes, fixedIncomes, budgets, customCategories, categoryOrder, categoryBudgets, dashboardCards, exchangeRates, savingsGoals, budgetTemplates, themeMode, biometricEnabled, pushNotificationsEnabled, onboardingCompleted, autoBackupReminder, lastBackupDate, settings
 - Survives app restarts, force closes, device reboots
 
 ---
@@ -410,7 +552,7 @@ No backend — all data is stored locally on device.
 ## Navigation
 
 - Bottom tabs: Dashboard, Expenses, Income, Budgets, Recurring
-- Stack screens: AddExpense (modal), AddIncome (modal), BudgetDetail (slide), Notifications (slide), Trends (slide), SavingsGoals (slide), Settings (slide), DataTransfer (slide), ReorderCategories (slide), CategoryBudgets (slide), DashboardCustomize (slide), Assistant (slide), IncomeList (slide)
+- Stack screens: AddExpense (modal), AddIncome (modal), BudgetDetail (slide), Notifications (slide), Trends (slide), SavingsGoals (slide), Settings (slide), DataTransfer (slide), ReorderCategories (slide), CategoryBudgets (slide), DashboardCustomize (slide), Assistant (slide), IncomeList (slide), GlobalSearch (slide), BillCalendar (slide)
 - Gates: BiometricGate (blocks app until authenticated if enabled), OnboardingGate (shows onboarding if not completed)
 
 ---
@@ -433,7 +575,7 @@ No backend — all data is stored locally on device.
 
 ### Component Organization
 
-- Shared components: `src/components/` (AnimatedNumber, CategoryIcon, GlassCard, UndoSnackbar)
+- Shared components: `src/components/` (AnimatedNumber, CategoryIcon, ErrorBoundary, GlassCard, UndoSnackbar)
 - Domain-specific components organized in folders:
   - `src/components/expense/` — AmountInput, BudgetSelector, CategoryGrid, CurrencySelector, DatePickerSection, ExpenseModals, ReceiptSection, SplitTransactions, TagsInput
   - `src/components/dashboard/` — BudgetUsageCard, DashboardFAB, DashboardModals, HeroBalanceCard, QuickActionsRow, QuickAddBar, RecentTransactions, SummaryCards, TopCategoriesCard, ViewModeToggle

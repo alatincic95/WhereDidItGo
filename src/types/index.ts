@@ -144,6 +144,9 @@ export interface CategoryBudget {
   category: string;       // matches ExpenseCategory or CustomCategory.name
   monthlyLimit: number;   // spending cap in base currency
   enabled: boolean;       // toggle without deleting
+  rolloverEnabled?: boolean;  // if true, unused budget carries to next month
+  rolloverAmount?: number;    // accumulated rollover from previous months
+  lastRolloverMonth?: string; // YYYY-MM of last rollover computation
 }
 
 export type RecurringFrequency = 'weekly' | 'biweekly' | 'monthly' | 'quarterly' | 'yearly';
@@ -172,6 +175,7 @@ export interface FixedExpense {
   frequency?: RecurringFrequency; // defaults to 'monthly' if absent (backward compat)
   startDate?: string; // YYYY-MM-DD when this recurring item was created
   lastProcessedDate?: string; // YYYY-MM-DD of last auto-generated expense
+  paused?: boolean; // if true, skip auto-processing and balance calculations
 }
 
 export interface FixedIncome {
@@ -182,6 +186,7 @@ export interface FixedIncome {
   frequency?: RecurringFrequency; // defaults to 'monthly' if absent (backward compat)
   startDate?: string; // YYYY-MM-DD when this recurring item was created
   lastProcessedDate?: string; // YYYY-MM-DD of last auto-generated income
+  paused?: boolean; // if true, skip auto-processing and balance calculations
 }
 
 export interface SavingsGoal {

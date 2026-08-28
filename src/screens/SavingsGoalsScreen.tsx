@@ -8,10 +8,13 @@ import {
   TextInput,
   Modal,
   Animated,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GlassCard } from '../components/GlassCard';
 import { useExpenseStore } from '../store/useExpenseStore';
 import { COLORS, SPACING, FONT_SIZE, BORDER_RADIUS, SHADOWS } from '../constants/theme';
@@ -19,6 +22,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { BUDGET_COLORS, SavingsGoal } from '../types';
 import { formatCurrency } from '../utils/currency';
 import { useUndoStore } from '../store/useUndoStore';
+import { CalendarPicker } from '../components/CalendarPicker';
 
 const GOAL_ICONS = [
   'savings', 'flight', 'home', 'directions-car', 'school',
@@ -30,6 +34,7 @@ const GOAL_ICONS = [
 export const SavingsGoalsScreen: React.FC = () => {
   const { colors, isDark } = useTheme();
   const navigation = useNavigation<any>();
+  const insets = useSafeAreaInsets();
   const {
     savingsGoals,
     addSavingsGoal,
@@ -57,6 +62,8 @@ export const SavingsGoalsScreen: React.FC = () => {
 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [goalToDelete, setGoalToDelete] = useState<SavingsGoal | null>(null);
+  const [showDeadlinePicker, setShowDeadlinePicker] = useState(false);
+  const [error, setError] = useState('');
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
@@ -90,13 +97,20 @@ export const SavingsGoalsScreen: React.FC = () => {
       setSelectedColor(BUDGET_COLORS[0]);
       setSelectedIcon(GOAL_ICONS[0]);
     }
+    setError('');
     setModalVisible(true);
   };
 
   const handleSave = () => {
-    if (!name.trim() || !targetAmount) return;
+    if (!name.trim()) {
+      setError('Please enter a goal name');
+      return;
+    }
     const target = parseFloat(targetAmount);
-    if (isNaN(target) || target <= 0) return;
+    if (!targetAmount || isNaN(target) || target <= 0) {
+      setError('Please enter a valid target amount');
+      return;
+    }
     const autoMonthly = parseFloat(autoContribution);
     const autoVal = !isNaN(autoMonthly) && autoMonthly > 0 ? autoMonthly : undefined;
 
@@ -257,7 +271,7 @@ export const SavingsGoalsScreen: React.FC = () => {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
         <TouchableOpacity style={[styles.backBtn, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={() => navigation.goBack()}>
           <MaterialIcons name="arrow-back" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
@@ -325,6 +339,7 @@ export const SavingsGoalsScreen: React.FC = () => {
         presentationStyle="pageSheet"
         onRequestClose={() => setModalVisible(false)}
       >
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
         <View style={[styles.modalContainer, { backgroundColor: colors.background }]}>
           <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
             <TouchableOpacity onPress={() => setModalVisible(false)}>
@@ -343,10 +358,11 @@ export const SavingsGoalsScreen: React.FC = () => {
             <TextInput
               style={[styles.modalInput, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.textPrimary }]}
               value={name}
-              onChangeText={setName}
+              onChangeText={(v) => { setName(v); setError(''); }}
               placeholder="e.g., Vacation, Emergency Fund"
               placeholderTextColor={colors.textMuted}
               autoFocus
+              maxLength={100}
             />
 
             <Text style={[styles.modalLabel, { color: colors.textMuted }]}>Target Amount</Text>
@@ -355,20 +371,43 @@ export const SavingsGoalsScreen: React.FC = () => {
               <TextInput
                 style={[styles.modalAmountInput, { color: colors.textPrimary }]}
                 value={targetAmount}
-                onChangeText={setTargetAmount}
+                onChangeText={(v) => { setTargetAmount(v); setError(''); }}
                 placeholder="5,000"
                 placeholderTextColor={colors.textMuted}
                 keyboardType="decimal-pad"
               />
             </View>
+            {error ? <Text style={{ color: colors.danger, fontSize: 12, marginTop: 4 }}>{error}</Text> : null}
 
             <Text style={[styles.modalLabel, { color: colors.textMuted }]}>Deadline (Optional)</Text>
-            <TextInput
-              style={[styles.modalInput, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.textPrimary }]}
-              value={deadline}
-              onChangeText={setDeadline}
-              placeholder="YYYY-MM-DD"
-              placeholderTextColor={colors.textMuted}
+            <TouchableOpacity
+              style={[styles.modalInput, { backgroundColor: colors.surface, borderColor: colors.border, flexDirection: 'row', alignItems: 'center' }]}
+              onPress={() => setShowDeadlinePicker(true)}
+            >
+              <MaterialIcons name="calendar-today" size={18} color={colors.textMuted} style={{ marginRight: 8 }} />
+              <Text style={{ color: deadline ? colors.textPrimary : colors.textMuted, fontSize: FONT_SIZE.md, flex: 1 }}>
+                {deadline
+                  ? new Date(deadline + 'T00:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+                  : 'Tap to pick a date'}
+              </Text>
+              {deadline !== '' && (
+                <TouchableOpacity onPress={() => setDeadline('')}>
+                  <MaterialIcons name="close" size={18} color={colors.textMuted} />
+                </TouchableOpacity>
+              )}
+            </TouchableOpacity>
+            <CalendarPicker
+              visible={showDeadlinePicker}
+              date={deadline ? new Date(deadline + 'T00:00:00') : new Date()}
+              onSelect={(d) => {
+                const yyyy = d.getFullYear();
+                const mm = String(d.getMonth() + 1).padStart(2, '0');
+                const dd = String(d.getDate()).padStart(2, '0');
+                setDeadline(`${yyyy}-${mm}-${dd}`);
+              }}
+              onClose={() => setShowDeadlinePicker(false)}
+              title="Select Deadline"
+              minDate={new Date()}
             />
 
             <Text style={[styles.modalLabel, { color: colors.textMuted }]}>Auto-contribution / month (Optional)</Text>
@@ -428,6 +467,7 @@ export const SavingsGoalsScreen: React.FC = () => {
             </View>
           </ScrollView>
         </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Add Funds Modal */}
@@ -817,6 +857,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     borderWidth: 1,
     borderColor: COLORS.border,
+    minHeight: 24,
   },
   modalAmountRow: {
     flexDirection: 'row',
@@ -838,6 +879,7 @@ const styles = StyleSheet.create({
     fontSize: FONT_SIZE.xl,
     color: COLORS.textPrimary,
     fontWeight: '700',
+    paddingVertical: 4,
   },
   iconGrid: {
     flexDirection: 'row',

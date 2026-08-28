@@ -138,6 +138,7 @@ export const createComputedSlice: StateCreator<StoreState, [], [], ComputedSlice
 
     const newExpenses: Expense[] = [];
     const updatedFixed = fixedExpenses.map((fe) => {
+      if (fe.paused) return fe; // skip paused items
       const freq = fe.frequency || 'monthly';
       const start = fe.startDate || defaultStart;
       const dueDates = computeDueDates(freq, start, fe.lastProcessedDate, today);
@@ -168,6 +169,7 @@ export const createComputedSlice: StateCreator<StoreState, [], [], ComputedSlice
 
     const newIncomes: Income[] = [];
     const updatedFixedIncomes = fixedIncomes.map((fi) => {
+      if (fi.paused) return fi; // skip paused items
       const freq = fi.frequency || 'monthly';
       const start = fi.startDate || defaultStart;
       const dueDates = computeDueDates(freq, start, fi.lastProcessedDate, today);

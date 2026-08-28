@@ -1,9 +1,8 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
-import { GlassCard } from '../GlassCard';
 import { useTheme } from '../../contexts/ThemeContext';
-import { COLORS, SPACING, FONT_SIZE } from '../../constants/theme';
+import { COLORS, SPACING, FONT_SIZE, BORDER_RADIUS } from '../../constants/theme';
 import { ViewMode } from './helpers';
 
 interface SummaryCardsProps {
@@ -29,7 +28,7 @@ export const SummaryCards: React.FC<SummaryCardsProps> = ({
   onEditIncome,
   onEditInitialBalance,
 }) => {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
 
   if (viewMode === 'monthly') {
     return (
@@ -39,32 +38,57 @@ export const SummaryCards: React.FC<SummaryCardsProps> = ({
           activeOpacity={0.7}
           onPress={onEditIncome}
         >
-          <GlassCard style={styles.summaryCard} glowColor={colors.success} intensity="low">
-            <View style={styles.summaryCardIcon}>
-              <MaterialIcons name="attach-money" size={20} color={colors.success} />
+          <View style={[
+            styles.card,
+            {
+              backgroundColor: isDark ? 'rgba(22, 33, 62, 0.85)' : colors.backgroundCard,
+              borderColor: isDark ? `${colors.success}25` : colors.border,
+            },
+          ]}>
+            <View style={styles.cardHeader}>
+              <View style={[styles.iconDot, { backgroundColor: `${colors.success}18` }]}>
+                <MaterialIcons name="trending-up" size={16} color={colors.success} />
+              </View>
+              <Text style={[styles.label, { color: colors.textMuted }]}>Income</Text>
             </View>
-            <Text style={[styles.summaryCardLabel, { color: colors.textMuted }]}>Income</Text>
-            <Text style={[styles.summaryCardAmount, { color: colors.success }]}>
+            <Text
+              style={[styles.amount, { color: colors.success }]}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.7}
+            >
               {formatCurrency(totalIncomeThisMonth)}
             </Text>
-            {extraIncome > 0 ? (
-              <Text style={[styles.summaryCardHint, { color: colors.textMuted }]}>+{formatCurrency(extraIncome)} extra</Text>
-            ) : (
-              <Text style={[styles.summaryCardHint, { color: colors.textMuted }]}>Tap to edit base</Text>
-            )}
-          </GlassCard>
+            <Text style={[styles.hint, { color: colors.textMuted }]}>
+              {extraIncome > 0 ? `+${formatCurrency(extraIncome)} extra` : 'Tap to edit base'}
+            </Text>
+          </View>
         </TouchableOpacity>
+
         <View style={{ flex: 1 }}>
-          <GlassCard style={styles.summaryCard} glowColor={colors.accent} intensity="low">
-            <View style={[styles.summaryCardIcon, { backgroundColor: `${colors.accent}1F` }]}>
-              <MaterialIcons name="shopping-cart" size={20} color={colors.accent} />
+          <View style={[
+            styles.card,
+            {
+              backgroundColor: isDark ? 'rgba(22, 33, 62, 0.85)' : colors.backgroundCard,
+              borderColor: isDark ? `${colors.accent}25` : colors.border,
+            },
+          ]}>
+            <View style={styles.cardHeader}>
+              <View style={[styles.iconDot, { backgroundColor: `${colors.accent}18` }]}>
+                <MaterialIcons name="trending-down" size={16} color={colors.accent} />
+              </View>
+              <Text style={[styles.label, { color: colors.textMuted }]}>Expenses</Text>
             </View>
-            <Text style={[styles.summaryCardLabel, { color: colors.textMuted }]}>Expenses</Text>
-            <Text style={[styles.summaryCardAmount, { color: colors.accent }]}>
+            <Text
+              style={[styles.amount, { color: colors.accent }]}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.7}
+            >
               {formatCurrency(totalSpentThisMonth)}
             </Text>
-            <Text style={[styles.summaryCardHint, { color: colors.textMuted }]}>incl. fixed</Text>
-          </GlassCard>
+            <Text style={[styles.hint, { color: colors.textMuted }]}>incl. fixed</Text>
+          </View>
         </View>
       </>
     );
@@ -77,65 +101,95 @@ export const SummaryCards: React.FC<SummaryCardsProps> = ({
         activeOpacity={0.7}
         onPress={onEditInitialBalance}
       >
-        <GlassCard style={styles.summaryCard} glowColor="#45B7D1" intensity="low">
-          <View style={[styles.summaryCardIcon, { backgroundColor: 'rgba(69, 183, 209, 0.12)' }]}>
-            <MaterialIcons name="savings" size={20} color="#45B7D1" />
+        <View style={[
+          styles.card,
+          {
+            backgroundColor: isDark ? 'rgba(22, 33, 62, 0.85)' : colors.backgroundCard,
+            borderColor: isDark ? 'rgba(69, 183, 209, 0.25)' : colors.border,
+          },
+        ]}>
+          <View style={styles.cardHeader}>
+            <View style={[styles.iconDot, { backgroundColor: 'rgba(69, 183, 209, 0.18)' }]}>
+              <MaterialIcons name="savings" size={16} color="#45B7D1" />
+            </View>
+            <Text style={[styles.label, { color: colors.textMuted }]}>Starting</Text>
           </View>
-          <Text style={[styles.summaryCardLabel, { color: colors.textMuted }]}>Starting</Text>
-          <Text style={[styles.summaryCardAmount, { color: '#45B7D1' }]}>
+          <Text
+            style={[styles.amount, { color: '#45B7D1' }]}
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.7}
+          >
             {formatCurrency(initialBalance)}
           </Text>
-          <Text style={[styles.summaryCardHint, { color: colors.textMuted }]}>Tap to edit</Text>
-        </GlassCard>
+          <Text style={[styles.hint, { color: colors.textMuted }]}>Tap to edit</Text>
+        </View>
       </TouchableOpacity>
+
       <View style={{ flex: 1 }}>
-        <GlassCard style={styles.summaryCard} glowColor={colors.accent} intensity="low">
-          <View style={[styles.summaryCardIcon, { backgroundColor: `${colors.accent}1F` }]}>
-            <MaterialIcons name="receipt-long" size={20} color={colors.accent} />
+        <View style={[
+          styles.card,
+          {
+            backgroundColor: isDark ? 'rgba(22, 33, 62, 0.85)' : colors.backgroundCard,
+            borderColor: isDark ? `${colors.accent}25` : colors.border,
+          },
+        ]}>
+          <View style={styles.cardHeader}>
+            <View style={[styles.iconDot, { backgroundColor: `${colors.accent}18` }]}>
+              <MaterialIcons name="receipt-long" size={16} color={colors.accent} />
+            </View>
+            <Text style={[styles.label, { color: colors.textMuted }]}>All Time</Text>
           </View>
-          <Text style={[styles.summaryCardLabel, { color: colors.textMuted }]}>All Time</Text>
-          <Text style={[styles.summaryCardAmount, { color: colors.accent }]}>
+          <Text
+            style={[styles.amount, { color: colors.accent }]}
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.7}
+          >
             {formatCurrency(totalAllTime)}
           </Text>
-          <Text style={[styles.summaryCardHint, { color: colors.textMuted }]}>total spent</Text>
-        </GlassCard>
+          <Text style={[styles.hint, { color: colors.textMuted }]}>total spent</Text>
+        </View>
       </View>
     </>
   );
 };
 
 const styles = StyleSheet.create({
-  summaryCard: {
+  card: {
     flex: 1,
+    borderRadius: BORDER_RADIUS.lg,
+    borderWidth: 1,
     padding: SPACING.md,
   },
-  summaryCardIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: 'rgba(0, 214, 143, 0.12)',
-    justifyContent: 'center',
+  cardHeader: {
+    flexDirection: 'row',
     alignItems: 'center',
+    gap: 6,
     marginBottom: SPACING.sm,
   },
-  summaryCardLabel: {
+  iconDot: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  label: {
     fontSize: FONT_SIZE.xs,
-    color: COLORS.textMuted,
-    fontWeight: '600',
+    fontWeight: '700',
     letterSpacing: 0.5,
     textTransform: 'uppercase',
-    marginBottom: 4,
   },
-  summaryCardAmount: {
-    fontSize: FONT_SIZE.xl,
+  amount: {
+    fontSize: FONT_SIZE.lg,
     fontWeight: '800',
-    letterSpacing: -0.5,
+    letterSpacing: -0.3,
+    marginBottom: 2,
   },
-  summaryCardHint: {
-    fontSize: FONT_SIZE.xs,
-    color: COLORS.textMuted,
+  hint: {
+    fontSize: 10,
     fontWeight: '500',
-    marginTop: 2,
     opacity: 0.7,
   },
 });

@@ -19,6 +19,7 @@ src/
 ├── components/
 │   ├── AnimatedNumber.tsx        # Animated numeric display
 │   ├── CategoryIcon.tsx          # Dynamic icon resolver (custom + default categories)
+│   ├── ErrorBoundary.tsx         # Per-screen error boundary with retry (class component)
 │   ├── GlassCard.tsx             # Reusable glass-morphism card (theme-aware)
 │   ├── UndoSnackbar.tsx          # Bottom snackbar for undo-after-delete
 │   ├── assistant/
@@ -79,6 +80,8 @@ src/
 │   ├── ReorderCategoriesScreen.tsx # Drag/button reorder of expense categories
 │   ├── DashboardCustomizeScreen.tsx # Reorder/hide dashboard cards
 │   ├── AssistantScreen.tsx       # AI chat assistant
+│   ├── GlobalSearchScreen.tsx    # Unified search across all data types
+│   ├── BillCalendarScreen.tsx    # Calendar view of upcoming recurring bills
 │   ├── SettingsScreen.tsx        # Theme, biometric, API key, links to sub-screens
 │   ├── DataTransferScreen.tsx    # Cloud backup, file transfer, transfer codes
 │   └── OnboardingScreen.tsx      # First-launch walkthrough (5 steps)
@@ -105,7 +108,11 @@ src/
     ├── nlParser.ts               # Natural language expense parser
     ├── categorySuggester.ts      # Smart category suggestion engine (history + keywords)
     ├── budgetSharing.ts          # Budget sharing: build/validate/share/import
-    └── receiptOcr.ts             # Gemini Vision API receipt scanning
+    ├── receiptOcr.ts             # Gemini Vision API receipt scanning
+    ├── spendingInsights.ts       # Local anomaly detection and spending insights
+    └── currencyFetch.ts          # Exchange rate auto-fetch from free API
+├── i18n/
+│   └── index.ts                  # Translation layer with t() function (English-only)
 
 Root files:
 ├── App.tsx                       # Entry: ThemeProvider → BiometricGate → OnboardingGate → AppNavigator
@@ -144,6 +151,8 @@ The store uses a **slice pattern** — each domain slice is defined in `src/stor
 | `biometricEnabled` | `boolean` | Yes | settings | Face ID / fingerprint lock |
 | `pushNotificationsEnabled` | `boolean` | Yes | settings | Local push notification toggle |
 | `onboardingCompleted` | `boolean` | Yes | settings | First-launch gate |
+| `autoBackupReminder` | `boolean` | Yes | settings | Weekly backup reminder toggle |
+| `lastBackupDate` | `string \| null` | Yes | settings | ISO date of last backup |
 
 ### Key Actions (grouped by slice)
 - **ExpenseSlice:** add, addWithId (restore), update, delete, markCompleted, convertExpenseToRecurring, getAllTags
@@ -183,7 +192,9 @@ Stack.Navigator (headerShown: false)
 ├── CategoryBudgets (slide_from_right)
 ├── DashboardCustomize (slide_from_right)
 ├── Assistant      (slide_from_right)
-└── IncomeList     (slide_from_right, also accessible from quick actions)
+├── IncomeList     (slide_from_right, also accessible from quick actions)
+├── GlobalSearch   (slide_from_right, accessible from Dashboard search icon)
+└── BillCalendar   (slide_from_right, accessible from Recurring tab calendar icon)
 ```
 
 ---
@@ -192,7 +203,8 @@ Stack.Navigator (headerShown: false)
 
 - **Palettes:** `DARK_COLORS` / `LIGHT_COLORS` in `src/constants/theme.ts`
 - **Provider:** `ThemeProvider` in `src/contexts/ThemeContext.tsx` reads `themeMode` from store
-- **Hook:** `useTheme()` → `{ colors, isDark, mode, toggle }`
+- **Hook:** `useTheme()` → `{ colors, isDark, mode, toggle, setMode }`
+- **Modes:** `'dark'` | `'light'` | `'system'` — system mode follows device appearance via `Appearance` API
 - **Pattern:** Screens import static `COLORS` for `StyleSheet.create` (dark fallback). Dynamic theming via inline `{ backgroundColor: colors.background }` on container View.
 - **Components:** `GlassCard` adapts glow/border per theme. Tab bar adapts background.
 

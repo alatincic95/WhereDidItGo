@@ -24,6 +24,7 @@ import {
   SHADOWS,
 } from '../constants/theme';
 import { useTheme } from '../contexts/ThemeContext';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   Income,
   INCOME_SOURCES,
@@ -33,11 +34,13 @@ import {
   RecurringFrequency,
 } from '../types';
 import { useUndoStore } from '../store/useUndoStore';
+import { CalendarPicker } from '../components/CalendarPicker';
 
 export const AddIncomeScreen: React.FC = () => {
   const { colors, isDark } = useTheme();
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
+  const insets = useSafeAreaInsets();
   const editingIncome: Income | undefined = route.params?.income;
 
   const { addIncome, addIncomeWithId, updateIncome, deleteIncome, convertIncomeToRecurring, currencySymbol } = useExpenseStore();
@@ -66,6 +69,7 @@ export const AddIncomeScreen: React.FC = () => {
     navigation.goBack();
   };
 
+  const [error, setError] = useState('');
   const [amount, setAmount] = useState(editingIncome?.amount?.toString() || '');
   const [source, setSource] = useState<string>(editingIncome?.source || '');
   const [description, setDescription] = useState(editingIncome?.description || '');
@@ -111,12 +115,12 @@ export const AddIncomeScreen: React.FC = () => {
   };
 
   const handleSave = () => {
-    if (!amount || parseFloat(amount) <= 0) {
-      Alert.alert('Invalid Amount', 'Please enter a valid amount');
+    if (!amount || isNaN(parseFloat(amount)) || parseFloat(amount) <= 0) {
+      setError('Please enter a valid amount');
       return;
     }
     if (!source) {
-      Alert.alert('Select Source', 'Please select an income source');
+      setError('Please select an income source');
       return;
     }
 
@@ -128,7 +132,13 @@ export const AddIncomeScreen: React.FC = () => {
     };
 
     if (editingIncome) {
+      const previousState = { ...editingIncome };
       updateIncome(editingIncome.id, incomeData);
+      showUndo({
+        message: 'Income updated',
+        entityType: 'income',
+        restore: () => updateIncome(editingIncome.id, previousState),
+      });
     } else {
       addIncome(incomeData);
     }
@@ -143,7 +153,7 @@ export const AddIncomeScreen: React.FC = () => {
         style={{ flex: 1 }}
       >
         {/* Header */}
-        <View style={styles.header}>
+        <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
           <TouchableOpacity
             style={[styles.backBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
             onPress={() => navigation.goBack()}
@@ -176,7 +186,7 @@ export const AddIncomeScreen: React.FC = () => {
               <TextInput
                 style={[styles.amountInput, { color: colors.textPrimary }]}
                 value={amount}
-                onChangeText={setAmount}
+                onChangeText={(val) => { setError(''); setAmount(val); }}
                 placeholder="0.00"
                 placeholderTextColor={colors.textMuted}
                 keyboardType="decimal-pad"
@@ -192,6 +202,7 @@ export const AddIncomeScreen: React.FC = () => {
                 style={styles.amountLineGradient}
               />
             </View>
+            {error ? <Text style={{ color: colors.danger, fontSize: 12, marginTop: 4, textAlign: 'center' }}>{error}</Text> : null}
           </Animated.View>
 
           {/* Source Selector */}
@@ -271,6 +282,7 @@ export const AddIncomeScreen: React.FC = () => {
                 placeholder="Where did this income come from?"
                 placeholderTextColor={colors.textMuted}
                 multiline
+                maxLength={200}
               />
             </View>
           </Animated.View>
@@ -328,60 +340,14 @@ export const AddIncomeScreen: React.FC = () => {
         </ScrollView>
       </KeyboardAvoidingView>
 
-      {/* Date Picker Modal */}
-      <Modal
+      {/* Date Picker */}
+      <CalendarPicker
         visible={showDatePicker}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowDatePicker(false)}
-      >
-        <TouchableOpacity
-          style={styles.datePickerOverlay}
-          activeOpacity={1}
-          onPress={() => setShowDatePicker(false)}
-        >
-          <View style={[styles.datePickerContainer, { backgroundColor: colors.backgroundCard, borderColor: colors.border }]}>
-            <Text style={[styles.datePickerTitle, { color: colors.textPrimary }]}>Select Date</Text>
-            <View style={styles.datePickerRow}>
-              <TouchableOpacity
-                style={[styles.datePickerArrow, { backgroundColor: colors.surface }]}
-                onPress={() => setDate(new Date(date.getTime() - 86400000))}
-              >
-                <MaterialIcons name="chevron-left" size={28} color={colors.textPrimary} />
-              </TouchableOpacity>
-              <Text style={[styles.datePickerValue, { color: colors.textPrimary }]}>
-                {date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-              </Text>
-              <TouchableOpacity
-                style={[styles.datePickerArrow, { backgroundColor: colors.surface }]}
-                onPress={() => setDate(new Date(date.getTime() + 86400000))}
-              >
-                <MaterialIcons name="chevron-right" size={28} color={colors.textPrimary} />
-              </TouchableOpacity>
-            </View>
-            <View style={styles.datePickerQuick}>
-              <TouchableOpacity
-                style={[styles.datePickerQuickBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
-                onPress={() => setDate(new Date())}
-              >
-                <Text style={[styles.datePickerQuickText, { color: colors.textSecondary }]}>Today</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.datePickerQuickBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
-                onPress={() => setDate(new Date(Date.now() - 86400000))}
-              >
-                <Text style={[styles.datePickerQuickText, { color: colors.textSecondary }]}>Yesterday</Text>
-              </TouchableOpacity>
-            </View>
-            <TouchableOpacity
-              style={styles.datePickerDoneBtn}
-              onPress={() => setShowDatePicker(false)}
-            >
-              <Text style={styles.datePickerDoneText}>Done</Text>
-            </TouchableOpacity>
-          </View>
-        </TouchableOpacity>
-      </Modal>
+        date={date}
+        onSelect={setDate}
+        onClose={() => setShowDatePicker(false)}
+        showQuickSelect
+      />
 
       {/* Delete Confirmation Modal */}
       <Modal
@@ -554,9 +520,10 @@ const styles = StyleSheet.create({
     fontSize: 56,
     color: COLORS.textPrimary,
     fontWeight: '800',
-    letterSpacing: -2,
+    letterSpacing: -1,
     minWidth: 120,
     textAlign: 'center',
+    paddingVertical: 4,
   },
   amountLine: {
     width: 200,
@@ -633,83 +600,13 @@ const styles = StyleSheet.create({
     fontSize: FONT_SIZE.md,
     color: COLORS.textPrimary,
     fontWeight: '500',
+    paddingVertical: 4,
+    minHeight: 24,
   },
   dateText: {
     fontSize: FONT_SIZE.md,
     color: COLORS.textPrimary,
     fontWeight: '500',
-  },
-
-  // Date Picker
-  datePickerOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  datePickerContainer: {
-    backgroundColor: COLORS.backgroundCard,
-    borderRadius: BORDER_RADIUS.xl,
-    padding: SPACING.xl,
-    width: '85%',
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  datePickerTitle: {
-    fontSize: FONT_SIZE.lg,
-    color: COLORS.textPrimary,
-    fontWeight: '700',
-    textAlign: 'center',
-    marginBottom: SPACING.lg,
-  },
-  datePickerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: SPACING.lg,
-  },
-  datePickerArrow: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: COLORS.surface,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  datePickerValue: {
-    fontSize: FONT_SIZE.xl,
-    color: COLORS.textPrimary,
-    fontWeight: '700',
-  },
-  datePickerQuick: {
-    flexDirection: 'row',
-    gap: SPACING.sm,
-    marginBottom: SPACING.lg,
-  },
-  datePickerQuickBtn: {
-    flex: 1,
-    paddingVertical: SPACING.sm,
-    borderRadius: BORDER_RADIUS.round,
-    backgroundColor: COLORS.surface,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  datePickerQuickText: {
-    fontSize: FONT_SIZE.sm,
-    color: COLORS.textSecondary,
-    fontWeight: '600',
-  },
-  datePickerDoneBtn: {
-    paddingVertical: SPACING.md,
-    borderRadius: BORDER_RADIUS.md,
-    backgroundColor: COLORS.primary,
-    alignItems: 'center',
-  },
-  datePickerDoneText: {
-    fontSize: FONT_SIZE.md,
-    color: '#FFF',
-    fontWeight: '700',
   },
 
   // Convert to Recurring

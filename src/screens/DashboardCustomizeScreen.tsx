@@ -12,6 +12,7 @@ import { useNavigation } from '@react-navigation/native';
 import { GlassCard } from '../components/GlassCard';
 import { useExpenseStore } from '../store/useExpenseStore';
 import { useTheme } from '../contexts/ThemeContext';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SPACING, FONT_SIZE, BORDER_RADIUS } from '../constants/theme';
 import {
   DashboardCardConfig,
@@ -24,6 +25,7 @@ import {
 export const DashboardCustomizeScreen: React.FC = () => {
   const navigation = useNavigation();
   const { colors, isDark } = useTheme();
+  const insets = useSafeAreaInsets();
   const dashboardCards = useExpenseStore((s) => s.dashboardCards);
   const setDashboardCards = useExpenseStore((s) => s.setDashboardCards);
   const resetDashboardCards = useExpenseStore((s) => s.resetDashboardCards);
@@ -66,7 +68,7 @@ export const DashboardCustomizeScreen: React.FC = () => {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
         <TouchableOpacity
           onPress={() => navigation.goBack()}
           style={[styles.backBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
@@ -202,8 +204,8 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   arrowBtn: {
-    width: 32,
-    height: 32,
+    width: 44,
+    height: 44,
     justifyContent: 'center',
     alignItems: 'center',
   },

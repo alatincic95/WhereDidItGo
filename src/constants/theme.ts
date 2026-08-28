@@ -1,6 +1,6 @@
 // ── Color Palettes ──────────────────────────────────────────────────
 
-export type ThemeMode = 'light' | 'dark';
+export type ThemeMode = 'light' | 'dark' | 'system';
 
 export interface ColorPalette {
   primary: string;
@@ -48,7 +48,7 @@ export const DARK_COLORS: ColorPalette = {
   surfaceLight: '#253352',
   textPrimary: '#FFFFFF',
   textSecondary: '#A0A3BD',
-  textMuted: '#6B6F8D',
+  textMuted: '#8B8FAD',
   success: '#00D68F',
   successLight: '#33E0A8',
   warning: '#FFAA00',

@@ -23,6 +23,7 @@ import {
   SHADOWS,
 } from '../constants/theme';
 import { useTheme } from '../contexts/ThemeContext';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   EXPENSE_CATEGORIES,
   Expense,
@@ -52,6 +53,7 @@ export const AddExpenseScreen: React.FC = () => {
   const { colors, isDark } = useTheme();
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
+  const insets = useSafeAreaInsets();
   const editingExpense: Expense | undefined = route.params?.expense;
   const preselectedProjectId: string | undefined = route.params?.projectId;
 
@@ -87,6 +89,9 @@ export const AddExpenseScreen: React.FC = () => {
   const [splits, setSplits] = useState<ExpenseSplit[]>(editingExpense?.splits || []);
   const splitsTotal = splits.reduce((s, x) => s + (x.amount || 0), 0);
   const splitsValid = splits.length === 0 || Math.abs(splitsTotal - (parseFloat(amount) || 0)) < 0.01;
+
+  // Validation
+  const [error, setError] = useState('');
 
   // Receipt OCR
   const [scanning, setScanning] = useState(false);
@@ -167,12 +172,12 @@ export const AddExpenseScreen: React.FC = () => {
   };
 
   const handleSave = () => {
-    if (!amount || parseFloat(amount) <= 0) {
-      Alert.alert('Invalid Amount', 'Please enter a valid amount');
+    if (!amount || isNaN(parseFloat(amount)) || parseFloat(amount) <= 0) {
+      setError('Please enter a valid amount');
       return;
     }
     if (!category) {
-      Alert.alert('Select Category', 'Please select a category');
+      setError('Please select a category');
       return;
     }
     if (splits.length > 0 && !splitsValid) {
@@ -198,7 +203,13 @@ export const AddExpenseScreen: React.FC = () => {
     };
 
     if (editingExpense) {
+      const previousState = { ...editingExpense };
       updateExpense(editingExpense.id, expenseData);
+      showUndo({
+        message: 'Expense updated',
+        entityType: 'expense',
+        restore: () => updateExpense(editingExpense.id, previousState),
+      });
     } else {
       addExpense(expenseData);
     }
@@ -249,7 +260,7 @@ export const AddExpenseScreen: React.FC = () => {
         style={{ flex: 1 }}
       >
         {/* Header */}
-        <View style={styles.header}>
+        <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
           <TouchableOpacity
             style={[styles.backBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
             onPress={() => navigation.goBack()}
@@ -268,13 +279,14 @@ export const AddExpenseScreen: React.FC = () => {
         >
           <AmountInput
             amount={amount}
-            setAmount={setAmount}
+            setAmount={(val: string) => { setError(''); setAmount(val); }}
             currencySymbol={displayCurrencySymbol}
             fadeAnim={fadeAnim}
             amountScale={amountScale}
             onFocus={handleAmountFocus}
             onBlur={handleAmountBlur}
           />
+          {error ? <Text style={{ color: colors.danger, fontSize: 12, marginTop: 4, textAlign: 'center' }}>{error}</Text> : null}
 
           <CurrencySelector
             exchangeRates={exchangeRates}
@@ -313,6 +325,7 @@ export const AddExpenseScreen: React.FC = () => {
                 placeholder="What was this expense for?"
                 placeholderTextColor={colors.textMuted}
                 multiline
+                maxLength={200}
               />
             </View>
           </Animated.View>
@@ -505,6 +518,8 @@ const styles = StyleSheet.create({
     fontSize: FONT_SIZE.md,
     color: COLORS.textPrimary,
     fontWeight: '500',
+    paddingVertical: 4,
+    minHeight: 24,
   },
 
   // Convert to Recurring

@@ -17,6 +17,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { useExpenseStore } from '../store/useExpenseStore';
 import { useTheme } from '../contexts/ThemeContext';
 import { SPACING, FONT_SIZE, BORDER_RADIUS } from '../constants/theme';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CURRENCY_OPTIONS } from '../utils/currency';
 import { EXPENSE_CATEGORIES, CATEGORY_ICONS, CATEGORY_COLORS, ExpenseCategory } from '../types';
 
@@ -32,6 +33,7 @@ const STEPS = [
 
 export const OnboardingScreen: React.FC = () => {
   const { colors, isDark, toggle } = useTheme();
+  const insets = useSafeAreaInsets();
   const [step, setStep] = useState(0);
   const [selectedCurrency, setSelectedCurrency] = useState('$');
   const [incomeInput, setIncomeInput] = useState('');
@@ -243,7 +245,7 @@ export const OnboardingScreen: React.FC = () => {
 
   return (
     <KeyboardAvoidingView
-      style={[styles.container, { backgroundColor: colors.background }]}
+      style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top + 32 }]}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       {/* Progress dots */}
@@ -420,6 +422,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: FONT_SIZE.xxl,
     fontWeight: '600',
+    paddingVertical: 4,
   },
   skipText: {
     fontSize: FONT_SIZE.sm,

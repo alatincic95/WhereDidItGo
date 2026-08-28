@@ -11,12 +11,15 @@ import {
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useExpenseStore } from '../store/useExpenseStore';
 import { useNotificationStore } from '../store/useNotificationStore';
 import { COLORS, SPACING, FONT_SIZE, BORDER_RADIUS } from '../constants/theme';
 import { useTheme } from '../contexts/ThemeContext';
 import { DashboardCardId, DEFAULT_DASHBOARD_CARDS } from '../types';
 import { formatCurrency } from '../utils/currency';
+import { generateSpendingInsights } from '../utils/spendingInsights';
+import { GlassCard } from '../components/GlassCard';
 import {
   HeroBalanceCard,
   ViewModeToggle,
@@ -38,6 +41,7 @@ import type { ViewMode } from '../components/dashboard';
 export const DashboardScreen: React.FC = () => {
   const navigation = useNavigation<any>();
   const { colors, isDark } = useTheme();
+  const insets = useSafeAreaInsets();
   const { width: screenWidth } = useWindowDimensions();
   const isCompact = screenWidth < COMPACT_BREAKPOINT;
   const [viewMode, setViewMode] = useState<ViewMode>('monthly');
@@ -200,7 +204,7 @@ export const DashboardScreen: React.FC = () => {
       >
         {/* Header */}
         <Animated.View
-          style={[styles.header, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}
+          style={[styles.header, { paddingTop: insets.top + 16, opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}
         >
           <View style={{ flex: 1 }}>
             <Text style={[styles.greeting, { color: colors.textMuted }]}>Good {getGreeting()}</Text>
@@ -221,7 +225,17 @@ export const DashboardScreen: React.FC = () => {
           )}
           <TouchableOpacity
             style={[styles.headerBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
+            onPress={() => navigation.navigate('GlobalSearch')}
+            accessibilityLabel="Search"
+            accessibilityRole="button"
+          >
+            <MaterialIcons name="search" size={22} color={colors.textSecondary} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.headerBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
             onPress={() => navigation.navigate('Notifications')}
+            accessibilityLabel={unreadCount > 0 ? `Notifications, ${unreadCount} unread` : 'Notifications'}
+            accessibilityRole="button"
           >
             <MaterialIcons
               name={unreadCount > 0 ? 'notifications' : 'notifications-none'}
@@ -237,11 +251,11 @@ export const DashboardScreen: React.FC = () => {
             )}
           </TouchableOpacity>
           {isCompact ? (
-            <TouchableOpacity style={[styles.headerBtn, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={() => setHamburgerOpen(true)}>
+            <TouchableOpacity style={[styles.headerBtn, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={() => setHamburgerOpen(true)} accessibilityLabel="Menu" accessibilityRole="button">
               <MaterialIcons name="menu" size={24} color={colors.textSecondary} />
             </TouchableOpacity>
           ) : (
-            <TouchableOpacity style={[styles.headerBtn, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={() => navigation.navigate('Settings' as never)}>
+            <TouchableOpacity style={[styles.headerBtn, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={() => navigation.navigate('Settings' as never)} accessibilityLabel="Settings" accessibilityRole="button">
               <MaterialIcons name="settings" size={22} color={colors.textSecondary} />
             </TouchableOpacity>
           )}
@@ -270,6 +284,39 @@ export const DashboardScreen: React.FC = () => {
         <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
           <QuickAddBar />
         </Animated.View>
+
+        {/* Spending Insights */}
+        {(() => {
+          const insights = generateSpendingInsights(expenses, fixedExpenses, monthlyIncome, currencySymbol);
+          if (insights.length === 0) return null;
+          return (
+            <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
+              <GlassCard style={{ marginBottom: SPACING.md }} glowColor={COLORS.primary} intensity="low">
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: SPACING.sm, marginBottom: SPACING.sm }}>
+                  <MaterialIcons name="lightbulb" size={18} color={colors.warning} />
+                  <Text style={{ fontSize: FONT_SIZE.sm, fontWeight: '700', color: colors.textMuted, letterSpacing: 1, textTransform: 'uppercase' }}>
+                    Insights
+                  </Text>
+                </View>
+                {insights.slice(0, 3).map((insight) => (
+                  <View key={insight.id} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: SPACING.sm, marginBottom: SPACING.sm }}>
+                    <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: `${insight.color}18`, justifyContent: 'center', alignItems: 'center' }}>
+                      <MaterialIcons name={insight.icon as any} size={16} color={insight.color} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: FONT_SIZE.sm, fontWeight: '700', color: colors.textPrimary, marginBottom: 2 }}>
+                        {insight.title}
+                      </Text>
+                      <Text style={{ fontSize: FONT_SIZE.sm, color: colors.textSecondary, lineHeight: 18 }}>
+                        {insight.message}
+                      </Text>
+                    </View>
+                  </View>
+                ))}
+              </GlassCard>
+            </Animated.View>
+          );
+        })()}
 
         {/* Dashboard cards rendered in user-configured order */}
         {orderedCards.filter((c) => c.visible).map((card, idx) => {

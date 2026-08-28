@@ -18,6 +18,7 @@ import {
   BORDER_RADIUS,
 } from '../constants/theme';
 import { useTheme } from '../contexts/ThemeContext';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppNotification } from '../types';
 
 const formatTimeAgo = (dateStr: string) => {
@@ -58,6 +59,7 @@ const groupNotifications = (notifications: AppNotification[]) => {
 export const NotificationsScreen: React.FC = () => {
   const { colors, isDark } = useTheme();
   const navigation = useNavigation<any>();
+  const insets = useSafeAreaInsets();
   const {
     notifications,
     markAsRead,
@@ -198,7 +200,7 @@ export const NotificationsScreen: React.FC = () => {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
-      <View style={[styles.header, { borderBottomColor: colors.border }]}>
+      <View style={[styles.header, { borderBottomColor: colors.border, paddingTop: insets.top + 16 }]}>
         <TouchableOpacity style={[styles.backBtn, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={() => navigation.goBack()}>
           <MaterialIcons name="arrow-back" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
@@ -449,9 +451,9 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   headerActionBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -661,9 +663,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   detailCloseBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: COLORS.background,
     justifyContent: 'center',
     alignItems: 'center',

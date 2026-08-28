@@ -12,7 +12,8 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialIcons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useExpenseStore } from '../store/useExpenseStore';
 import { COLORS, SPACING, FONT_SIZE, BORDER_RADIUS } from '../constants/theme';
 import { useTheme } from '../contexts/ThemeContext';
@@ -62,6 +63,9 @@ type SortMode = 'date' | 'amount_high' | 'amount_low';
 export const IncomeListScreen: React.FC = () => {
   const { colors, isDark } = useTheme();
   const navigation = useNavigation<any>();
+  const insets = useSafeAreaInsets();
+  const route = useRoute();
+  const isStackScreen = route.name === 'IncomeList';
   const { incomes, currencySymbol } = useExpenseStore();
   const [selectedMonth, setSelectedMonth] = useState<number | null>(new Date().getMonth());
   const [selectedYear] = useState(new Date().getFullYear());
@@ -185,7 +189,16 @@ export const IncomeListScreen: React.FC = () => {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
+        {isStackScreen && (
+          <TouchableOpacity
+            style={[styles.backBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
+            onPress={() => navigation.goBack()}
+            accessibilityLabel="Go back"
+          >
+            <MaterialIcons name="arrow-back" size={24} color={colors.textPrimary} />
+          </TouchableOpacity>
+        )}
         <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Income</Text>
         <View style={styles.headerTotal}>
           <Text style={[styles.headerTotalLabel, { color: colors.textMuted }]}>
@@ -321,7 +334,7 @@ export const IncomeListScreen: React.FC = () => {
             <Text style={[styles.emptySubtext, { color: colors.textMuted }]}>
               {hasActiveFilters
                 ? 'Try adjusting your filters'
-                : 'Tap the + button to add your first income'}
+                : 'Tap + to record income like gifts, bonuses, or freelance earnings.\nRecurring income (salary, etc.) can be set up in the Recurring tab.'}
             </Text>
           </View>
         ) : sortMode !== 'date' ? (
@@ -481,6 +494,8 @@ export const IncomeListScreen: React.FC = () => {
         style={styles.fab}
         activeOpacity={0.8}
         onPress={() => navigation.navigate('AddIncome')}
+        accessibilityLabel="Add income"
+        accessibilityRole="button"
       >
         <LinearGradient
           colors={['#00D68F', '#45B7D1']}
@@ -504,6 +519,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-end',
+  },
+  backBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: COLORS.surface,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    marginRight: SPACING.sm,
   },
   headerTitle: {
     fontSize: FONT_SIZE.xxl,
@@ -546,6 +572,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: FONT_SIZE.md,
     fontWeight: '500',
+    paddingVertical: 4,
   },
   filterBtn: {
     width: 40,
@@ -836,6 +863,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: FONT_SIZE.lg,
     fontWeight: '600',
+    paddingVertical: 4,
   },
   amountDash: {
     fontSize: FONT_SIZE.lg,

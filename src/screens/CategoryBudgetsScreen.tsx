@@ -8,6 +8,8 @@ import {
   TextInput,
   Modal,
   Switch,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -16,6 +18,7 @@ import { GlassCard } from '../components/GlassCard';
 import { CategoryIcon } from '../components/CategoryIcon';
 import { useExpenseStore } from '../store/useExpenseStore';
 import { useTheme } from '../contexts/ThemeContext';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COLORS, SPACING, FONT_SIZE, BORDER_RADIUS } from '../constants/theme';
 import { CATEGORY_COLORS, ExpenseCategory } from '../types';
 import { formatCurrency } from '../utils/currency';
@@ -28,6 +31,7 @@ const getCurrentMonth = () => {
 export const CategoryBudgetsScreen: React.FC = () => {
   const navigation = useNavigation();
   const { colors, isDark } = useTheme();
+  const insets = useSafeAreaInsets();
 
   const {
     categoryBudgets,
@@ -49,6 +53,7 @@ export const CategoryBudgetsScreen: React.FC = () => {
   const [editCategory, setEditCategory] = useState<string | null>(null);
   const [limitInput, setLimitInput] = useState('');
   const [deleteConfirmCategory, setDeleteConfirmCategory] = useState<string | null>(null);
+  const [error, setError] = useState('');
 
   const totalAllocated = useMemo(
     () => categoryBudgets.filter((b) => b.enabled).reduce((sum, b) => sum + b.monthlyLimit, 0),
@@ -58,15 +63,18 @@ export const CategoryBudgetsScreen: React.FC = () => {
   const openEdit = (category: string) => {
     const existing = categoryBudgets.find((b) => b.category === category);
     setLimitInput(existing ? String(existing.monthlyLimit) : '');
+    setError('');
     setEditCategory(category);
   };
 
   const handleSave = () => {
     if (!editCategory) return;
     const val = parseFloat(limitInput);
-    if (!isNaN(val) && val > 0) {
-      setCategoryBudget(editCategory, val);
+    if (isNaN(val) || val <= 0) {
+      setError('Please enter a valid budget amount');
+      return;
     }
+    setCategoryBudget(editCategory, val);
     setEditCategory(null);
   };
 
@@ -91,7 +99,7 @@ export const CategoryBudgetsScreen: React.FC = () => {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
         <TouchableOpacity
           onPress={() => navigation.goBack()}
           style={[styles.backBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
@@ -217,6 +225,7 @@ export const CategoryBudgetsScreen: React.FC = () => {
         animationType="fade"
         onRequestClose={() => setEditCategory(null)}
       >
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
         <TouchableOpacity
           style={styles.modalOverlay}
           activeOpacity={1}
@@ -241,7 +250,7 @@ export const CategoryBudgetsScreen: React.FC = () => {
                   <TextInput
                     style={[styles.input, { color: colors.textPrimary }]}
                     value={limitInput}
-                    onChangeText={setLimitInput}
+                    onChangeText={(v) => { setLimitInput(v); setError(''); }}
                     keyboardType="decimal-pad"
                     placeholder="0.00"
                     placeholderTextColor={colors.textMuted}
@@ -249,6 +258,7 @@ export const CategoryBudgetsScreen: React.FC = () => {
                     selectTextOnFocus
                   />
                 </View>
+                {error ? <Text style={{ color: colors.danger, fontSize: 12, marginTop: 4 }}>{error}</Text> : null}
 
                 {(() => {
                   const status = getStatusForCategory(editCategory);
@@ -276,6 +286,7 @@ export const CategoryBudgetsScreen: React.FC = () => {
             )}
           </View>
         </TouchableOpacity>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Delete Confirmation Modal */}
@@ -492,6 +503,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 28,
     fontWeight: '800',
+    paddingVertical: 4,
   },
   modalHint: {
     fontSize: FONT_SIZE.sm,

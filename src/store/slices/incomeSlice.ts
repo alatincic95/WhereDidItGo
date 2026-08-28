@@ -81,7 +81,7 @@ export const createIncomeSlice: StateCreator<StoreState, [], [], IncomeSlice> = 
 
   getFixedIncomesTotal: () => {
     const { fixedIncomes } = get();
-    return fixedIncomes.reduce((sum, i) => {
+    return fixedIncomes.filter((i) => !i.paused).reduce((sum, i) => {
       const multiplier = FREQUENCY_TO_MONTHLY[i.frequency || 'monthly'];
       return sum + i.amount * multiplier;
     }, 0);

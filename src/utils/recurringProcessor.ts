@@ -47,12 +47,18 @@ function advanceByFrequency(date: Date, frequency: RecurringFrequency): Date {
     case 'biweekly':
       d.setDate(d.getDate() + 14);
       break;
-    case 'monthly':
+    case 'monthly': {
+      const origDay = d.getDate();
       d.setMonth(d.getMonth() + 1);
+      if (d.getDate() < origDay) d.setDate(0); // clamp to last day of target month
       break;
-    case 'quarterly':
+    }
+    case 'quarterly': {
+      const origDay = d.getDate();
       d.setMonth(d.getMonth() + 3);
+      if (d.getDate() < origDay) d.setDate(0);
       break;
+    }
     case 'yearly':
       d.setFullYear(d.getFullYear() + 1);
       break;

@@ -11,6 +11,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GlassCard } from '../components/GlassCard';
 import { CategoryIcon } from '../components/CategoryIcon';
 import { useExpenseStore } from '../store/useExpenseStore';
@@ -41,6 +42,7 @@ const formatMonth = (m: string) => {
 export const TrendsScreen: React.FC = () => {
   const { colors, isDark } = useTheme();
   const navigation = useNavigation<any>();
+  const insets = useSafeAreaInsets();
   const [chartMode, setChartMode] = useState<ChartMode>('both');
   const [timeRange, setTimeRange] = useState<TrendTimeRange>('6m');
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -129,7 +131,7 @@ export const TrendsScreen: React.FC = () => {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
         <TouchableOpacity style={[styles.backBtn, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={() => navigation.goBack()}>
           <MaterialIcons name="arrow-back" size={24} color={colors.textPrimary} />
         </TouchableOpacity>

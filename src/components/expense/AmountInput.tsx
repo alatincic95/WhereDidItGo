@@ -99,9 +99,10 @@ const styles = StyleSheet.create({
     fontSize: 56,
     color: COLORS.textPrimary,
     fontWeight: '800',
-    letterSpacing: -2,
+    letterSpacing: -1,
     minWidth: 120,
     textAlign: 'center',
+    paddingVertical: 4,
   },
   amountLine: {
     width: 200,

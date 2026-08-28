@@ -4,7 +4,7 @@ import * as Sharing from 'expo-sharing';
 import { Expense, FixedExpense, FixedIncome, Income, Budget, CustomCategory, ExchangeRate, SavingsGoal, BudgetTemplate, DashboardCardConfig } from '../types';
 
 function escapeCsv(value: string): string {
-  if (value.includes(',') || value.includes('"') || value.includes('\n')) {
+  if (value.includes(',') || value.includes('"') || value.includes('\n') || value.includes('\r')) {
     return `"${value.replace(/"/g, '""')}"`;
   }
   return value;
@@ -162,9 +162,29 @@ export function validateBackup(json: string): { valid: true; data: BackupData } 
     return { valid: false, error: 'Not a WhereDidItGo backup file.' };
   }
 
-  if (!Array.isArray(parsed.expenses)) {
-    return { valid: false, error: 'Backup is missing expenses data.' };
+  // Validate required array fields
+  const requiredArrays = ['expenses', 'fixedExpenses', 'incomes', 'fixedIncomes', 'budgets', 'customCategories', 'exchangeRates', 'savingsGoals', 'budgetTemplates'] as const;
+  for (const field of requiredArrays) {
+    if (!Array.isArray(parsed[field])) {
+      // Default to empty array for missing optional arrays
+      parsed[field] = [];
+    }
   }
+
+  // Validate required scalar fields
+  if (typeof parsed.monthlyIncome !== 'number') parsed.monthlyIncome = 0;
+  if (typeof parsed.initialBalance !== 'number') parsed.initialBalance = 0;
+  if (typeof parsed.currencySymbol !== 'string') parsed.currencySymbol = '$';
+
+  // Validate expense objects have required fields
+  parsed.expenses = parsed.expenses.filter((e: any) =>
+    e && typeof e.id === 'string' && typeof e.amount === 'number' && typeof e.category === 'string'
+  );
+
+  // Validate income objects have required fields
+  parsed.incomes = parsed.incomes.filter((i: any) =>
+    i && typeof i.id === 'string' && typeof i.amount === 'number' && typeof i.source === 'string'
+  );
 
   return { valid: true, data: parsed as BackupData };
 }

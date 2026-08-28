@@ -8,6 +8,7 @@ import {
   Modal,
   TextInput,
   Platform,
+  KeyboardAvoidingView,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -15,6 +16,7 @@ import { useNavigation } from '@react-navigation/native';
 import { GlassCard } from '../components/GlassCard';
 import { useExpenseStore } from '../store/useExpenseStore';
 import { useTheme } from '../contexts/ThemeContext';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SPACING, FONT_SIZE, BORDER_RADIUS } from '../constants/theme';
 import { exportBackup, pickAndReadBackupFile } from '../utils/exportData';
 import { shareBackupToCloud, generateTransferData, parseTransferData } from '../utils/cloudBackup';
@@ -22,7 +24,8 @@ import { shareBackupToCloud, generateTransferData, parseTransferData } from '../
 export const DataTransferScreen: React.FC = () => {
   const navigation = useNavigation();
   const { colors, isDark } = useTheme();
-  const { getBackupState, restoreFromBackup } = useExpenseStore();
+  const insets = useSafeAreaInsets();
+  const { getBackupState, restoreFromBackup, setLastBackupDate } = useExpenseStore();
 
   const [transferCode, setTransferCode] = useState('');
   const [showCodeModal, setShowCodeModal] = useState(false);
@@ -46,6 +49,7 @@ export const DataTransferScreen: React.FC = () => {
   const handleCloudBackup = async () => {
     const success = await shareBackupToCloud(getBackupState());
     if (success) {
+      setLastBackupDate(new Date().toISOString());
       showStatus('Backup shared successfully', 'success');
     }
   };
@@ -53,6 +57,7 @@ export const DataTransferScreen: React.FC = () => {
   const handleFileBackup = async () => {
     const success = await exportBackup(getBackupState());
     if (success) {
+      setLastBackupDate(new Date().toISOString());
       showStatus('Backup exported successfully', 'success');
     }
   };
@@ -125,7 +130,7 @@ export const DataTransferScreen: React.FC = () => {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
         <TouchableOpacity
           onPress={() => navigation.goBack()}
           style={[styles.backBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
@@ -291,6 +296,7 @@ export const DataTransferScreen: React.FC = () => {
         animationType="fade"
         onRequestClose={() => setShowImportModal(false)}
       >
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
         <TouchableOpacity
           style={[styles.modalOverlay, { backgroundColor: colors.overlay }]}
           activeOpacity={1}
@@ -336,6 +342,7 @@ export const DataTransferScreen: React.FC = () => {
             </View>
           </View>
         </TouchableOpacity>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Restore Confirmation */}

@@ -183,7 +183,7 @@ export const createExpenseSlice: StateCreator<StoreState, [], [], ExpenseSlice> 
 
   getFixedExpensesTotal: () => {
     const { fixedExpenses } = get();
-    return fixedExpenses.reduce((sum, e) => {
+    return fixedExpenses.filter((e) => !e.paused).reduce((sum, e) => {
       const multiplier = FREQUENCY_TO_MONTHLY[e.frequency || 'monthly'];
       return sum + e.amount * multiplier;
     }, 0);
@@ -203,7 +203,7 @@ export const createExpenseSlice: StateCreator<StoreState, [], [], ExpenseSlice> 
       }
     });
     const { fixedExpenses } = get();
-    fixedExpenses.forEach((e) => {
+    fixedExpenses.filter((e) => !e.paused).forEach((e) => {
       totals[e.category] = (totals[e.category] || 0) + e.amount;
     });
     return totals;
@@ -223,7 +223,7 @@ export const createExpenseSlice: StateCreator<StoreState, [], [], ExpenseSlice> 
         totals[e.category] = (totals[e.category] || 0) + convert(e.amount, e.currency);
       }
     });
-    fixedExpenses.forEach((e) => {
+    fixedExpenses.filter((e) => !e.paused).forEach((e) => {
       totals[e.category] = (totals[e.category] || 0) + e.amount * Math.max(months.length, 1);
     });
     return totals;

@@ -119,6 +119,99 @@ export async function scheduleBudgetAlert(
 }
 
 /**
+ * Schedule a monthly recap notification for the last day of the current month at 8 PM.
+ * Summarizes total spending and comparison to previous month.
+ */
+export async function scheduleMonthlyRecap(): Promise<void> {
+  if (Platform.OS === 'web') return;
+
+  const recapId = 'monthly-recap';
+  await Notifications.cancelScheduledNotificationAsync(recapId).catch(() => {});
+
+  const now = new Date();
+  // Schedule for last day of current month at 20:00
+  const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0, 20, 0, 0);
+  if (lastDay <= now) return; // already past
+
+  const secondsUntil = Math.max(1, Math.floor((lastDay.getTime() - now.getTime()) / 1000));
+
+  try {
+    await Notifications.scheduleNotificationAsync({
+      identifier: recapId,
+      content: {
+        title: 'Monthly Spending Recap',
+        body: 'Tap to see your spending summary for this month',
+        sound: true,
+      },
+      trigger: { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: secondsUntil },
+    });
+  } catch {
+    // Silently fail
+  }
+}
+
+/**
+ * Schedule a backup reminder if the user hasn't backed up in 7+ days.
+ * Fires 7 days after lastBackupDate, or immediately if never backed up.
+ */
+export async function scheduleBackupReminder(lastBackupDate: string | null): Promise<void> {
+  if (Platform.OS === 'web') return;
+
+  const reminderId = 'backup-reminder';
+  await Notifications.cancelScheduledNotificationAsync(reminderId).catch(() => {});
+
+  const now = Date.now();
+  const sevenDays = 7 * 24 * 60 * 60 * 1000;
+
+  if (!lastBackupDate) {
+    // Never backed up — remind in 1 day
+    try {
+      await Notifications.scheduleNotificationAsync({
+        identifier: reminderId,
+        content: {
+          title: 'Backup Reminder',
+          body: "You haven't backed up your financial data yet. Tap to protect your data.",
+          sound: true,
+        },
+        trigger: { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: 86400 },
+      });
+    } catch {}
+    return;
+  }
+
+  const lastDate = new Date(lastBackupDate).getTime();
+  const nextReminder = lastDate + sevenDays;
+
+  if (nextReminder <= now) {
+    // Overdue — remind in 1 hour
+    try {
+      await Notifications.scheduleNotificationAsync({
+        identifier: reminderId,
+        content: {
+          title: 'Backup Reminder',
+          body: "It's been over a week since your last backup. Tap to back up your data.",
+          sound: true,
+        },
+        trigger: { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: 3600 },
+      });
+    } catch {}
+  } else {
+    const secondsUntil = Math.max(1, Math.floor((nextReminder - now) / 1000));
+    try {
+      await Notifications.scheduleNotificationAsync({
+        identifier: reminderId,
+        content: {
+          title: 'Backup Reminder',
+          body: "It's been a week since your last backup. Tap to back up your data.",
+          sound: true,
+        },
+        trigger: { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: secondsUntil },
+      });
+    } catch {}
+  }
+}
+
+/**
  * Cancel all scheduled notifications.
  */
 export async function cancelAllScheduled(): Promise<void> {

@@ -377,20 +377,32 @@
 - [x] **Recurring expense auto-processing** — auto-generate actual expense entries each period so recurring items appear in trends and lists
 - [x] **Export UI for CSV** — dedicated export button in Expenses tab header (file-download icon) alongside existing Dashboard backup menu
 - [x] **Year-over-year trends** — time range selector (6 Mo / 12 Mo / Year over Year) with grouped bar chart comparing same month across years
+- [x] **Unit tests for store/calculations** — 107 tests across 9 suites covering balance calculations, currency conversion, recurring processing, split validation, and all store slices
+- [x] **Unified search across all data** — GlobalSearchScreen with search across expenses, incomes, budgets, recurring items, and savings goals; type filter chips; navigates to item on tap; accessible via search icon in Dashboard header
+- [x] **Error boundaries** — ErrorBoundary component wrapping every screen (tabs + stack); catches React errors per-screen with retry button; prevents full app crashes
 
 ### Medium Priority
 
 - [x] **Receipt OCR** — parse amount, date, vendor, and category from receipt photos via Gemini Vision API (requires API key in Settings)
+- [x] **Monthly recap push notification** — scheduled for last day of month at 8 PM; fires via expo-notifications with spending summary prompt
+- [x] **Proactive spending insights** — local anomaly detection engine (`src/utils/spendingInsights.ts`) surfaces category spikes, spending pace warnings, no-spend streaks, and month-over-month comparison on Dashboard
+- [x] **Date range filtering** — YYYY-MM-DD date range inputs in ExpenseListScreen filter modal; works alongside month selector and other filters
+- [x] **Recurring item pause** — `paused` flag on FixedExpense/FixedIncome; paused items skip auto-processing, balance calculations, and bill calendar; pause/resume toggle in edit modal; visual "Paused" badge on list items
+- [x] **Bill calendar view** — `BillCalendarScreen` with mini calendar grid, month navigator, bills-due/income-due summary cards, day-grouped upcoming list; accessible via calendar icon in Recurring tab header
+- [x] **Budget rollover (carry-over)** — `rolloverEnabled` flag per CategoryBudget; unused budget auto-carries to next month via `processRollovers()` on app launch; effective limit = base + rollover; toggle in settings slice
+- [x] **i18n preparation** — `src/i18n/index.ts` translation layer with `t()` function, full English string catalog, `setLocale()` for future languages; ships English-only
 
 ### Nice to Have
 
 - [x] **Dashboard customization** — reorder or hide dashboard cards
 - [x] **Shared budgets** — share individual budgets with linked expenses via transfer code or file (peer-to-peer, no cloud)
-- [ ] **Scheduled auto-backup** — reminder or automatic periodic backup
+- [x] **Scheduled auto-backup** — weekly backup reminder notification when enabled; tracks `lastBackupDate`, schedules via `scheduleBackupReminder()`; toggle in Settings
 - [ ] **Home screen widgets** — quick-add expense without opening the app (requires `expo prebuild`, not Expo Go)
 - [ ] **Expense notes / attachments beyond receipts** — attach multiple photos or PDFs
-- [ ] **Search across all data** — unified search across expenses, incomes, budgets, goals, recurring items
-- [ ] **Category budget carry-over** — unused budget rolls to next month
-- [ ] **Dark mode scheduling** — auto-switch based on system setting or time of day
-- [ ] **Multi-language / localization (i18n)** — currently English-only
-- [ ] **Accessibility audit** — VoiceOver / TalkBack labels, dynamic font sizing support
+- [x] **Dark mode scheduling** — three theme modes: Dark, Light, System; system mode follows device appearance via `Appearance` API with real-time listener; selector in Settings
+- [x] **Accessibility audit** — tab bar labels, dashboard header buttons, FABs, undo snackbar all have `accessibilityLabel`/`accessibilityRole`; snackbar uses `accessibilityLiveRegion`
+- [x] **Navigate from generated recurring entry to parent** — tapping auto-generated recurring expense navigates to Recurring tab
+- [x] **Undo for edits** — editing an expense or income shows 5-second undo snackbar to restore previous state
+- [x] **Bulk operations** — long-press to multi-select expenses; bulk delete and bulk re-categorize with undo support; selection bar with count
+- [x] **Empty state guidance** — enhanced hints on Expenses, Income, Recurring expenses, Recurring income screens with actionable guidance
+- [x] **Currency auto-detection / rate fetch** — one-tap "Sync Exchange Rates" in Settings fetches from free open-source API; auto-detects base currency; updates all 14 currencies

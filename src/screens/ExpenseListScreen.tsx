@@ -13,8 +13,11 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CategoryIcon } from '../components/CategoryIcon';
 import { useExpenseStore } from '../store/useExpenseStore';
+import { useUndoStore } from '../store/useUndoStore';
+import { CalendarPicker } from '../components/CalendarPicker';
 import { COLORS, SPACING, FONT_SIZE, BORDER_RADIUS } from '../constants/theme';
 import { useTheme } from '../contexts/ThemeContext';
 import {
@@ -65,7 +68,9 @@ type SortMode = 'date' | 'amount_high' | 'amount_low';
 export const ExpenseListScreen: React.FC = () => {
   const { colors, isDark } = useTheme();
   const navigation = useNavigation<any>();
-  const { expenses, fixedExpenses, incomes, fixedIncomes, getMonthlyExpenses, deleteExpense, getMonthlyTotal, getFixedExpensesTotal, currencySymbol, customCategories, getOrderedCategories } = useExpenseStore();
+  const insets = useSafeAreaInsets();
+  const { expenses, fixedExpenses, incomes, fixedIncomes, getMonthlyExpenses, deleteExpense, updateExpense, addExpenseWithId, getMonthlyTotal, getFixedExpensesTotal, currencySymbol, customCategories, getOrderedCategories } = useExpenseStore();
+  const showUndo = useUndoStore((s) => s.show);
   const [selectedMonth, setSelectedMonth] = useState<number | null>(new Date().getMonth());
   const [selectedYear] = useState(new Date().getFullYear());
   const [filterOpen, setFilterOpen] = useState(false);
@@ -74,6 +79,14 @@ export const ExpenseListScreen: React.FC = () => {
   const [maxAmount, setMaxAmount] = useState('');
   const [sortMode, setSortMode] = useState<SortMode>('date');
   const [searchText, setSearchText] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [showBulkCategoryModal, setShowBulkCategoryModal] = useState(false);
+  const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
+  const [showDateFromPicker, setShowDateFromPicker] = useState(false);
+  const [showDateToPicker, setShowDateToPicker] = useState(false);
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -107,9 +120,49 @@ export const ExpenseListScreen: React.FC = () => {
     setMaxAmount('');
     setSortMode('date');
     setSearchText('');
+    setDateFrom('');
+    setDateTo('');
   };
 
-  const hasActiveFilters = selectedCategories.size > 0 || minAmount !== '' || maxAmount !== '' || sortMode !== 'date' || searchText !== '';
+  const toggleSelection = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const exitSelectionMode = () => {
+    setSelectionMode(false);
+    setSelectedIds(new Set());
+  };
+
+  const handleBulkDelete = () => {
+    const snapshots = expenses.filter((e) => selectedIds.has(e.id));
+    snapshots.forEach((e) => deleteExpense(e.id));
+    showUndo({
+      message: `${snapshots.length} expense${snapshots.length > 1 ? 's' : ''} deleted`,
+      entityType: 'expense',
+      restore: () => snapshots.forEach((e) => addExpenseWithId(e)),
+    });
+    exitSelectionMode();
+    setShowBulkDeleteConfirm(false);
+  };
+
+  const handleBulkRecategorize = (newCategory: string) => {
+    const snapshots = expenses.filter((e) => selectedIds.has(e.id)).map((e) => ({ ...e }));
+    snapshots.forEach((e) => updateExpense(e.id, { category: newCategory }));
+    showUndo({
+      message: `${snapshots.length} expense${snapshots.length > 1 ? 's' : ''} moved to ${newCategory}`,
+      entityType: 'expense',
+      restore: () => snapshots.forEach((e) => updateExpense(e.id, { category: e.category })),
+    });
+    exitSelectionMode();
+    setShowBulkCategoryModal(false);
+  };
+
+  const hasActiveFilters = selectedCategories.size > 0 || minAmount !== '' || maxAmount !== '' || sortMode !== 'date' || searchText !== '' || dateFrom !== '' || dateTo !== '';
 
   const filteredExpenses = useMemo(() => {
     let result = [...monthlyExpenses];
@@ -129,6 +182,16 @@ export const ExpenseListScreen: React.FC = () => {
       result = result.filter((e) => selectedCategories.has(e.category));
     }
 
+    // Date range filter
+    if (dateFrom) {
+      const from = new Date(dateFrom + 'T00:00:00');
+      if (!isNaN(from.getTime())) result = result.filter((e) => new Date(e.date) >= from);
+    }
+    if (dateTo) {
+      const to = new Date(dateTo + 'T23:59:59');
+      if (!isNaN(to.getTime())) result = result.filter((e) => new Date(e.date) <= to);
+    }
+
     // Amount range
     const min = parseFloat(minAmount);
     const max = parseFloat(maxAmount);
@@ -145,7 +208,7 @@ export const ExpenseListScreen: React.FC = () => {
     }
 
     return result;
-  }, [monthlyExpenses, selectedCategories, minAmount, maxAmount, sortMode, searchText]);
+  }, [monthlyExpenses, selectedCategories, minAmount, maxAmount, sortMode, searchText, dateFrom, dateTo]);
 
   const filteredTotal = filteredExpenses.reduce((s, e) => s + e.amount, 0);
   const fixedTotal = getFixedExpensesTotal();
@@ -154,16 +217,41 @@ export const ExpenseListScreen: React.FC = () => {
     : getMonthlyTotal(monthKey) + fixedTotal;
   const grouped = groupExpensesByDate(filteredExpenses);
 
-  const renderExpenseItem = (expense: Expense) => (
+  const renderExpenseItem = (expense: Expense) => {
+    const isSelected = selectedIds.has(expense.id);
+    return (
     <TouchableOpacity
       key={expense.id}
-      style={[styles.expenseItem, { backgroundColor: colors.surface, borderColor: colors.border }]}
+      style={[
+        styles.expenseItem,
+        { backgroundColor: colors.surface, borderColor: colors.border },
+        isSelected && { borderColor: colors.primary, backgroundColor: `${colors.primary}12` },
+      ]}
       activeOpacity={0.7}
       onPress={() => {
-        if (expense.isFixed) return; // auto-generated recurring items managed in Recurring tab
+        if (selectionMode) {
+          toggleSelection(expense.id);
+          return;
+        }
+        if (expense.isFixed) {
+          navigation.navigate('Main', { screen: 'Fixed' });
+          return;
+        }
         navigation.navigate('AddExpense', { expense });
       }}
+      onLongPress={() => {
+        if (expense.isFixed) return;
+        if (!selectionMode) {
+          setSelectionMode(true);
+          setSelectedIds(new Set([expense.id]));
+        }
+      }}
     >
+      {selectionMode && (
+        <View style={[styles.selectionCheck, isSelected && { backgroundColor: colors.primary, borderColor: colors.primary }]}>
+          {isSelected && <MaterialIcons name="check" size={14} color="#FFF" />}
+        </View>
+      )}
       <CategoryIcon category={expense.category} size={44} />
       <View style={styles.expenseInfo}>
         <Text style={[styles.expenseDesc, { color: colors.textPrimary }]}>
@@ -206,11 +294,12 @@ export const ExpenseListScreen: React.FC = () => {
       </View>
     </TouchableOpacity>
   );
+  };
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
         <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Expenses</Text>
         <View style={styles.headerTotal}>
           <Text style={[styles.headerTotalLabel, { color: colors.textMuted }]}>
@@ -221,6 +310,35 @@ export const ExpenseListScreen: React.FC = () => {
           </Text>
         </View>
       </View>
+
+      {/* Selection Mode Bar */}
+      {selectionMode && (
+        <View style={[styles.selectionBar, { backgroundColor: colors.primary + '15', borderColor: colors.primary + '30' }]}>
+          <TouchableOpacity onPress={exitSelectionMode}>
+            <MaterialIcons name="close" size={22} color={colors.textPrimary} />
+          </TouchableOpacity>
+          <Text style={[styles.selectionCount, { color: colors.textPrimary }]}>
+            {selectedIds.size} selected
+          </Text>
+          <View style={{ flex: 1 }} />
+          <TouchableOpacity
+            style={[styles.bulkBtn, { backgroundColor: colors.primary + '20' }]}
+            onPress={() => setShowBulkCategoryModal(true)}
+            disabled={selectedIds.size === 0}
+          >
+            <MaterialIcons name="category" size={18} color={colors.primary} />
+            <Text style={[styles.bulkBtnText, { color: colors.primary }]}>Re-categorize</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.bulkBtn, { backgroundColor: colors.danger + '20' }]}
+            onPress={() => setShowBulkDeleteConfirm(true)}
+            disabled={selectedIds.size === 0}
+          >
+            <MaterialIcons name="delete-outline" size={18} color={colors.danger} />
+            <Text style={[styles.bulkBtnText, { color: colors.danger }]}>Delete</Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
       {/* Search + Filter Row */}
       <View style={styles.searchRow}>
@@ -275,6 +393,13 @@ export const ExpenseListScreen: React.FC = () => {
           {maxAmount !== '' && (
             <View style={styles.chip}>
               <Text style={styles.chipText}>Max: ${maxAmount}</Text>
+            </View>
+          )}
+          {(dateFrom || dateTo) && (
+            <View style={styles.chip}>
+              <Text style={styles.chipText}>
+                {dateFrom || '...'} → {dateTo || '...'}
+              </Text>
             </View>
           )}
           {sortMode !== 'date' && (
@@ -352,7 +477,7 @@ export const ExpenseListScreen: React.FC = () => {
             <Text style={[styles.emptySubtext, { color: colors.textMuted }]}>
               {hasActiveFilters
                 ? 'Try adjusting your filters'
-                : 'Tap the + button to add your first expense'}
+                : 'Tap + to add an expense, or use Quick Add on the Dashboard.\nTip: long-press expenses to select multiple for bulk actions.'}
             </Text>
           </View>
         ) : sortMode !== 'date' ? (
@@ -515,6 +640,64 @@ export const ExpenseListScreen: React.FC = () => {
               </View>
             </View>
 
+            {/* Date Range */}
+            <Text style={[styles.modalLabel, { color: colors.textMuted }]}>Date Range</Text>
+            <View style={styles.amountRow}>
+              <TouchableOpacity
+                style={[styles.amountInputWrap, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                onPress={() => setShowDateFromPicker(true)}
+              >
+                <MaterialIcons name="calendar-today" size={14} color={colors.textMuted} style={{ marginRight: 4 }} />
+                <Text style={[styles.amountInput, { color: dateFrom ? colors.textPrimary : colors.textMuted }]} numberOfLines={1}>
+                  {dateFrom || 'From'}
+                </Text>
+                {dateFrom !== '' && (
+                  <TouchableOpacity onPress={() => setDateFrom('')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                    <MaterialIcons name="close" size={14} color={colors.textMuted} />
+                  </TouchableOpacity>
+                )}
+              </TouchableOpacity>
+              <Text style={[styles.amountDash, { color: colors.textMuted }]}>—</Text>
+              <TouchableOpacity
+                style={[styles.amountInputWrap, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                onPress={() => setShowDateToPicker(true)}
+              >
+                <MaterialIcons name="calendar-today" size={14} color={colors.textMuted} style={{ marginRight: 4 }} />
+                <Text style={[styles.amountInput, { color: dateTo ? colors.textPrimary : colors.textMuted }]} numberOfLines={1}>
+                  {dateTo || 'To'}
+                </Text>
+                {dateTo !== '' && (
+                  <TouchableOpacity onPress={() => setDateTo('')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                    <MaterialIcons name="close" size={14} color={colors.textMuted} />
+                  </TouchableOpacity>
+                )}
+              </TouchableOpacity>
+            </View>
+            <CalendarPicker
+              visible={showDateFromPicker}
+              date={dateFrom ? new Date(dateFrom + 'T00:00:00') : new Date()}
+              onSelect={(d) => {
+                const yyyy = d.getFullYear();
+                const mm = String(d.getMonth() + 1).padStart(2, '0');
+                const dd = String(d.getDate()).padStart(2, '0');
+                setDateFrom(`${yyyy}-${mm}-${dd}`);
+              }}
+              onClose={() => setShowDateFromPicker(false)}
+              title="From Date"
+            />
+            <CalendarPicker
+              visible={showDateToPicker}
+              date={dateTo ? new Date(dateTo + 'T00:00:00') : new Date()}
+              onSelect={(d) => {
+                const yyyy = d.getFullYear();
+                const mm = String(d.getMonth() + 1).padStart(2, '0');
+                const dd = String(d.getDate()).padStart(2, '0');
+                setDateTo(`${yyyy}-${mm}-${dd}`);
+              }}
+              onClose={() => setShowDateToPicker(false)}
+              title="To Date"
+            />
+
             {/* Apply */}
             <TouchableOpacity
               style={styles.applyBtn}
@@ -536,11 +719,57 @@ export const ExpenseListScreen: React.FC = () => {
         </View>
       </Modal>
 
+      {/* Bulk Delete Confirm Modal */}
+      <Modal visible={showBulkDeleteConfirm} transparent animationType="fade">
+        <View style={styles.bulkModalOverlay}>
+          <View style={[styles.bulkModalContent, { backgroundColor: colors.surface }]}>
+            <Text style={[styles.bulkModalTitle, { color: colors.textPrimary }]}>Delete {selectedIds.size} Expenses?</Text>
+            <Text style={[styles.bulkModalSub, { color: colors.textSecondary }]}>This action can be undone for 5 seconds.</Text>
+            <View style={styles.bulkModalBtns}>
+              <TouchableOpacity style={[styles.bulkModalBtn, { backgroundColor: colors.background }]} onPress={() => setShowBulkDeleteConfirm(false)}>
+                <Text style={[styles.bulkModalBtnText, { color: colors.textSecondary }]}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.bulkModalBtn, { backgroundColor: colors.danger }]} onPress={handleBulkDelete}>
+                <Text style={[styles.bulkModalBtnText, { color: '#FFF' }]}>Delete</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Bulk Re-categorize Modal */}
+      <Modal visible={showBulkCategoryModal} transparent animationType="fade">
+        <View style={styles.bulkModalOverlay}>
+          <View style={[styles.bulkModalContent, { backgroundColor: colors.surface }]}>
+            <Text style={[styles.bulkModalTitle, { color: colors.textPrimary }]}>Move {selectedIds.size} to Category</Text>
+            <ScrollView style={{ maxHeight: 300 }} showsVerticalScrollIndicator={false}>
+              <View style={styles.bulkCategoryGrid}>
+                {[...EXPENSE_CATEGORIES, ...customCategories.map((c) => c.name)].map((cat) => (
+                  <TouchableOpacity
+                    key={cat}
+                    style={[styles.bulkCategoryChip, { backgroundColor: colors.background, borderColor: colors.border }]}
+                    onPress={() => handleBulkRecategorize(cat)}
+                  >
+                    <CategoryIcon category={cat} size={28} />
+                    <Text style={[styles.bulkCategoryText, { color: colors.textPrimary }]}>{cat}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </ScrollView>
+            <TouchableOpacity style={[styles.bulkModalBtn, { backgroundColor: colors.background, marginTop: SPACING.md }]} onPress={() => setShowBulkCategoryModal(false)}>
+              <Text style={[styles.bulkModalBtnText, { color: colors.textSecondary }]}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
       {/* FAB */}
       <TouchableOpacity
         style={styles.fab}
         activeOpacity={0.8}
         onPress={() => navigation.navigate('AddExpense')}
+        accessibilityLabel="Add expense"
+        accessibilityRole="button"
       >
         <LinearGradient
           colors={['#6C63FF', '#BB8FCE']}
@@ -612,6 +841,7 @@ const styles = StyleSheet.create({
     fontSize: FONT_SIZE.md,
     color: COLORS.textPrimary,
     fontWeight: '500',
+    paddingVertical: 4,
   },
   filterBtn: {
     width: 40,
@@ -944,6 +1174,7 @@ const styles = StyleSheet.create({
     fontSize: FONT_SIZE.lg,
     color: COLORS.textPrimary,
     fontWeight: '600',
+    paddingVertical: 4,
   },
   amountDash: {
     fontSize: FONT_SIZE.lg,
@@ -966,6 +1197,93 @@ const styles = StyleSheet.create({
     fontSize: FONT_SIZE.lg,
     color: '#FFF',
     fontWeight: '700',
+  },
+  // Selection Mode
+  selectionBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.sm,
+    gap: SPACING.sm,
+    borderBottomWidth: 1,
+  },
+  selectionCount: {
+    fontSize: FONT_SIZE.md,
+    fontWeight: '700',
+  },
+  selectionCheck: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 2,
+    borderColor: COLORS.border,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  bulkBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: SPACING.sm + 2,
+    paddingVertical: 6,
+    borderRadius: BORDER_RADIUS.round,
+    gap: 4,
+  },
+  bulkBtnText: {
+    fontSize: FONT_SIZE.xs,
+    fontWeight: '700',
+  },
+  bulkModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: SPACING.lg,
+  },
+  bulkModalContent: {
+    width: '100%',
+    borderRadius: BORDER_RADIUS.lg,
+    padding: SPACING.lg,
+  },
+  bulkModalTitle: {
+    fontSize: FONT_SIZE.lg,
+    fontWeight: '700',
+    marginBottom: SPACING.sm,
+  },
+  bulkModalSub: {
+    fontSize: FONT_SIZE.md,
+    marginBottom: SPACING.md,
+  },
+  bulkModalBtns: {
+    flexDirection: 'row',
+    gap: SPACING.sm,
+  },
+  bulkModalBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: BORDER_RADIUS.md,
+    alignItems: 'center',
+  },
+  bulkModalBtnText: {
+    fontSize: FONT_SIZE.md,
+    fontWeight: '600',
+  },
+  bulkCategoryGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: SPACING.sm,
+  },
+  bulkCategoryChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.sm,
+    borderRadius: BORDER_RADIUS.md,
+    borderWidth: 1,
+    gap: SPACING.sm,
+  },
+  bulkCategoryText: {
+    fontSize: FONT_SIZE.sm,
+    fontWeight: '600',
   },
   fab: {
     position: 'absolute',

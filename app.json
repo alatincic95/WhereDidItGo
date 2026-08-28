@@ -7,13 +7,20 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
     "newArchEnabled": true,
+    "scheme": "wherediditgo",
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
       "backgroundColor": "#0F0F1A"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.wherediditgo.app",
+      "infoPlist": {
+        "NSFaceIDUsageDescription": "Authenticate to access your financial data",
+        "NSCameraUsageDescription": "Take photos of receipts to add expenses",
+        "NSPhotoLibraryUsageDescription": "Select receipt photos from your library"
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -21,11 +28,28 @@
         "backgroundColor": "#0F0F1A"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.wherediditgo.app"
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
-    "plugins": []
+    "plugins": [
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Select receipt photos to attach to expenses",
+          "cameraPermission": "Take photos of receipts to add expenses"
+        }
+      ],
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Authenticate to access your financial data"
+        }
+      ],
+      "expo-notifications",
+      "expo-secure-store"
+    ]
   }
 }

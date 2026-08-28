@@ -25,6 +25,7 @@ import {
   SHADOWS,
 } from '../constants/theme';
 import { useTheme } from '../contexts/ThemeContext';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { formatCurrency } from '../utils/currency';
 import {
   shareBudgetViaFile,
@@ -43,6 +44,7 @@ const formatDate = (dateStr: string) => {
 
 export const ProjectDetailScreen: React.FC = () => {
   const { colors, isDark } = useTheme();
+  const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const budgetId = route.params?.budgetId || route.params?.projectId;
@@ -125,7 +127,7 @@ export const ProjectDetailScreen: React.FC = () => {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
         <TouchableOpacity
           style={[styles.backBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
           onPress={() => navigation.goBack()}

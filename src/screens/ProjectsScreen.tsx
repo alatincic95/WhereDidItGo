@@ -21,6 +21,7 @@ import {
   SHADOWS,
 } from '../constants/theme';
 import { useTheme } from '../contexts/ThemeContext';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BUDGET_COLORS, Budget, BudgetTemplate } from '../types';
 import { useUndoStore } from '../store/useUndoStore';
 import { parseBudgetTransferCode } from '../utils/budgetSharing';
@@ -34,6 +35,7 @@ import {
 
 export const ProjectsScreen: React.FC = () => {
   const { colors, isDark } = useTheme();
+  const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
   const {
     budgets,
@@ -190,7 +192,7 @@ export const ProjectsScreen: React.FC = () => {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
         <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Budgets</Text>
         <View style={styles.headerActions}>
           <TouchableOpacity
@@ -268,7 +270,7 @@ export const ProjectsScreen: React.FC = () => {
         )}
 
         {budgets.length === 0 && (
-          <View style={styles.emptyState}>
+          <View style={[styles.emptyState, { paddingTop: insets.top + 16 }]}>
             <View style={[styles.emptyIcon, { backgroundColor: colors.surface, borderColor: colors.border }]}>
               <MaterialIcons name="account-balance-wallet" size={48} color={colors.textMuted} />
             </View>

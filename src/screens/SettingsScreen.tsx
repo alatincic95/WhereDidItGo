@@ -13,21 +13,30 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as LocalAuthentication from 'expo-local-authentication';
 import { GlassCard } from '../components/GlassCard';
 import { useExpenseStore } from '../store/useExpenseStore';
 import { useTheme } from '../contexts/ThemeContext';
 import { SPACING, FONT_SIZE, BORDER_RADIUS } from '../constants/theme';
 import { requestPermissions, cancelAllScheduled } from '../utils/localNotifications';
-import { getApiKey, setApiKey, removeApiKey } from '../assistant/config';
+import { getApiKey, setApiKey, removeApiKey, maskApiKey } from '../assistant/config';
+import { syncExchangeRates } from '../utils/currencyFetch';
 
 export const SettingsScreen: React.FC = () => {
   const navigation = useNavigation();
-  const { colors, isDark, toggle } = useTheme();
+  const { colors, isDark, mode: themeMode, setMode: setThemeMode } = useTheme();
+  const insets = useSafeAreaInsets();
   const biometricEnabled = useExpenseStore((s) => s.biometricEnabled);
   const setBiometricEnabled = useExpenseStore((s) => s.setBiometricEnabled);
   const pushNotificationsEnabled = useExpenseStore((s) => s.pushNotificationsEnabled);
   const setPushNotificationsEnabled = useExpenseStore((s) => s.setPushNotificationsEnabled);
+  const autoBackupReminder = useExpenseStore((s) => s.autoBackupReminder);
+  const setAutoBackupReminder = useExpenseStore((s) => s.setAutoBackupReminder);
+  const monthlyIncome = useExpenseStore((s) => s.monthlyIncome);
+  const setMonthlyIncome = useExpenseStore((s) => s.setMonthlyIncome);
+  const currencySymbol = useExpenseStore((s) => s.currencySymbol);
+  const resetAllData = useExpenseStore((s) => s.resetAllData);
   const [biometricAvailable, setBiometricAvailable] = useState(false);
   const [biometricType, setBiometricType] = useState('Biometrics');
   const [apiKeyValue, setApiKeyValue] = useState('');
@@ -35,6 +44,13 @@ export const SettingsScreen: React.FC = () => {
   const [showApiKeyModal, setShowApiKeyModal] = useState(false);
   const [apiKeyInput, setApiKeyInput] = useState('');
   const [showApiKey, setShowApiKey] = useState(false);
+  const [ratesSyncing, setRatesSyncing] = useState(false);
+  const [ratesSyncResult, setRatesSyncResult] = useState<'success' | 'error' | null>(null);
+  const [showIncomeModal, setShowIncomeModal] = useState(false);
+  const [incomeInput, setIncomeInput] = useState('');
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [showResetFinal, setShowResetFinal] = useState(false);
+  const [resetConfirmText, setResetConfirmText] = useState('');
 
   useEffect(() => {
     checkBiometric();
@@ -108,8 +124,8 @@ export const SettingsScreen: React.FC = () => {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={[styles.backBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+      <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={[styles.backBtn, { backgroundColor: colors.surface, borderColor: colors.border }]} accessibilityLabel="Go back" accessibilityRole="button">
           <MaterialIcons name="arrow-back" size={22} color={colors.textPrimary} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Settings</Text>
@@ -123,21 +139,49 @@ export const SettingsScreen: React.FC = () => {
           <View style={styles.settingRow}>
             <View style={styles.settingInfo}>
               <View style={[styles.settingIcon, { backgroundColor: isDark ? 'rgba(108, 99, 255, 0.12)' : 'rgba(108, 99, 255, 0.08)' }]}>
-                <MaterialIcons name={isDark ? 'dark-mode' : 'light-mode'} size={22} color={colors.primary} />
+                <MaterialIcons
+                  name={themeMode === 'system' ? 'brightness-auto' : isDark ? 'dark-mode' : 'light-mode'}
+                  size={22}
+                  color={colors.primary}
+                />
               </View>
               <View>
-                <Text style={[styles.settingTitle, { color: colors.textPrimary }]}>Dark Mode</Text>
+                <Text style={[styles.settingTitle, { color: colors.textPrimary }]}>Theme</Text>
                 <Text style={[styles.settingSubtitle, { color: colors.textSecondary }]}>
-                  {isDark ? 'Dark theme active' : 'Light theme active'}
+                  {themeMode === 'system' ? 'Following system' : isDark ? 'Dark theme' : 'Light theme'}
                 </Text>
               </View>
             </View>
-            <Switch
-              value={isDark}
-              onValueChange={toggle}
-              trackColor={{ false: colors.border, true: colors.primary }}
-              thumbColor="#FFF"
-            />
+          </View>
+          <View style={styles.themeSelectorRow}>
+            {([
+              ['light', 'light-mode', 'Light'],
+              ['dark', 'dark-mode', 'Dark'],
+              ['system', 'brightness-auto', 'System'],
+            ] as const).map(([mode, icon, label]) => (
+              <TouchableOpacity
+                key={mode}
+                style={[
+                  styles.themeOption,
+                  { backgroundColor: colors.background, borderColor: colors.border },
+                  themeMode === mode && { borderColor: colors.primary, backgroundColor: `${colors.primary}15` },
+                ]}
+                onPress={() => setThemeMode(mode)}
+              >
+                <MaterialIcons
+                  name={icon as any}
+                  size={18}
+                  color={themeMode === mode ? colors.primary : colors.textMuted}
+                />
+                <Text style={[
+                  styles.themeOptionText,
+                  { color: colors.textMuted },
+                  themeMode === mode && { color: colors.primary },
+                ]}>
+                  {label}
+                </Text>
+              </TouchableOpacity>
+            ))}
           </View>
         </GlassCard>
 
@@ -204,6 +248,108 @@ export const SettingsScreen: React.FC = () => {
           </TouchableOpacity>
         </GlassCard>
 
+        {/* Currency */}
+        <GlassCard style={styles.card}>
+          <TouchableOpacity
+            style={styles.settingRow}
+            onPress={async () => {
+              setRatesSyncing(true);
+              setRatesSyncResult(null);
+              const ok = await syncExchangeRates();
+              setRatesSyncResult(ok ? 'success' : 'error');
+              setRatesSyncing(false);
+              setTimeout(() => setRatesSyncResult(null), 3000);
+            }}
+            disabled={ratesSyncing}
+          >
+            <View style={styles.settingInfo}>
+              <View style={[styles.settingIcon, { backgroundColor: isDark ? 'rgba(78, 205, 196, 0.12)' : 'rgba(78, 205, 196, 0.08)' }]}>
+                <MaterialIcons name="currency-exchange" size={22} color="#4ECDC4" />
+              </View>
+              <View>
+                <Text style={[styles.settingTitle, { color: colors.textPrimary }]}>Sync Exchange Rates</Text>
+                <Text style={[styles.settingSubtitle, { color: colors.textSecondary }]}>
+                  {ratesSyncing ? 'Fetching latest rates...' :
+                   ratesSyncResult === 'success' ? 'Rates updated!' :
+                   ratesSyncResult === 'error' ? 'Failed to fetch rates' :
+                   'Fetch latest rates from the internet'}
+                </Text>
+              </View>
+            </View>
+            <MaterialIcons
+              name={ratesSyncing ? 'hourglass-top' : ratesSyncResult === 'success' ? 'check-circle' : 'sync'}
+              size={22}
+              color={ratesSyncResult === 'success' ? colors.success : ratesSyncResult === 'error' ? colors.danger : colors.textMuted}
+            />
+          </TouchableOpacity>
+        </GlassCard>
+
+        {/* Financial */}
+        <Text style={[styles.sectionLabel, { color: colors.textMuted }]}>FINANCIAL</Text>
+        <GlassCard style={styles.card}>
+          <TouchableOpacity
+            style={styles.settingRow}
+            onPress={() => {
+              setIncomeInput(monthlyIncome.toString());
+              setShowIncomeModal(true);
+            }}
+          >
+            <View style={styles.settingInfo}>
+              <View style={[styles.settingIcon, { backgroundColor: isDark ? 'rgba(0, 214, 143, 0.12)' : 'rgba(0, 214, 143, 0.08)' }]}>
+                <MaterialIcons name="account-balance-wallet" size={22} color={colors.success} />
+              </View>
+              <View>
+                <Text style={[styles.settingTitle, { color: colors.textPrimary }]}>Monthly Income</Text>
+                <Text style={[styles.settingSubtitle, { color: colors.textSecondary }]}>
+                  {currencySymbol}{monthlyIncome.toLocaleString()}
+                </Text>
+              </View>
+            </View>
+            <MaterialIcons name="chevron-right" size={22} color={colors.textMuted} />
+          </TouchableOpacity>
+        </GlassCard>
+
+        {/* Monthly Income Modal */}
+        <Modal visible={showIncomeModal} transparent animationType="fade">
+          <View style={styles.modalOverlay}>
+            <View style={[styles.modalContent, { backgroundColor: colors.surface }]}>
+              <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>Edit Monthly Income</Text>
+              <View style={[styles.apiKeyInputWrapper, { backgroundColor: colors.background, borderColor: colors.border }]}>
+                <Text style={{ color: colors.textMuted, fontSize: FONT_SIZE.md, marginRight: 4 }}>{currencySymbol}</Text>
+                <TextInput
+                  style={[styles.apiKeyInput, { color: colors.textPrimary }]}
+                  placeholder="0"
+                  placeholderTextColor={colors.textMuted}
+                  value={incomeInput}
+                  onChangeText={setIncomeInput}
+                  keyboardType="numeric"
+                  autoFocus
+                />
+              </View>
+              <View style={styles.modalButtons}>
+                <TouchableOpacity
+                  style={[styles.modalBtn, { backgroundColor: colors.background }]}
+                  onPress={() => setShowIncomeModal(false)}
+                >
+                  <Text style={[styles.modalBtnText, { color: colors.textSecondary }]}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.modalBtn, { backgroundColor: colors.primary }]}
+                  onPress={() => {
+                    const parsed = parseFloat(incomeInput);
+                    if (!isNaN(parsed) && parsed >= 0) {
+                      setMonthlyIncome(parsed);
+                    }
+                    setShowIncomeModal(false);
+                  }}
+                >
+                  <Text style={[styles.modalBtnText, { color: '#FFF' }]}>Save</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+
         {/* AI Assistant */}
         <Text style={[styles.sectionLabel, { color: colors.textMuted }]}>AI ASSISTANT</Text>
         <GlassCard style={styles.card}>
@@ -215,13 +361,13 @@ export const SettingsScreen: React.FC = () => {
               <View style={{ flex: 1 }}>
                 <Text style={[styles.settingTitle, { color: colors.textPrimary }]}>Gemini API Key</Text>
                 <Text style={[styles.settingSubtitle, { color: colors.textSecondary }]}>
-                  {apiKeyConfigured ? 'Key configured' : 'Required for AI assistant'}
+                  {apiKeyConfigured ? maskApiKey(apiKeyValue) : 'Required for AI assistant'}
                 </Text>
               </View>
             </View>
             {apiKeyConfigured ? (
               <View style={{ flexDirection: 'row', gap: SPACING.xs }}>
-                <TouchableOpacity onPress={() => { setApiKeyInput(apiKeyValue); setShowApiKeyModal(true); }}>
+                <TouchableOpacity onPress={() => { setApiKeyInput(''); setShowApiKeyModal(true); }}>
                   <MaterialIcons name="edit" size={20} color={colors.textMuted} />
                 </TouchableOpacity>
                 <TouchableOpacity onPress={handleRemoveApiKey}>
@@ -362,6 +508,126 @@ export const SettingsScreen: React.FC = () => {
           </TouchableOpacity>
         </GlassCard>
 
+        <GlassCard style={styles.card}>
+          <View style={styles.settingRow}>
+            <View style={styles.settingInfo}>
+              <View style={[styles.settingIcon, { backgroundColor: isDark ? 'rgba(69, 183, 209, 0.12)' : 'rgba(69, 183, 209, 0.08)' }]}>
+                <MaterialIcons name="backup" size={22} color={colors.primary} />
+              </View>
+              <View>
+                <Text style={[styles.settingTitle, { color: colors.textPrimary }]}>Backup Reminder</Text>
+                <Text style={[styles.settingSubtitle, { color: colors.textSecondary }]}>
+                  {autoBackupReminder ? 'Weekly reminder enabled' : 'Get reminded to back up your data'}
+                </Text>
+              </View>
+            </View>
+            <Switch
+              value={autoBackupReminder}
+              onValueChange={setAutoBackupReminder}
+              trackColor={{ false: colors.border, true: colors.primary }}
+              thumbColor="#FFF"
+              disabled={!pushNotificationsEnabled}
+            />
+          </View>
+        </GlassCard>
+
+        <GlassCard style={styles.card}>
+          <TouchableOpacity
+            style={styles.settingRow}
+            onPress={() => setShowResetConfirm(true)}
+          >
+            <View style={styles.settingInfo}>
+              <View style={[styles.settingIcon, { backgroundColor: isDark ? 'rgba(255, 69, 58, 0.12)' : 'rgba(255, 69, 58, 0.08)' }]}>
+                <MaterialIcons name="delete-forever" size={22} color={colors.danger} />
+              </View>
+              <View>
+                <Text style={[styles.settingTitle, { color: colors.danger }]}>Reset All Data</Text>
+                <Text style={[styles.settingSubtitle, { color: colors.textSecondary }]}>
+                  Delete all financial data and start fresh
+                </Text>
+              </View>
+            </View>
+            <MaterialIcons name="chevron-right" size={22} color={colors.textMuted} />
+          </TouchableOpacity>
+        </GlassCard>
+
+        {/* Reset Confirmation Modal - Step 1 */}
+        <Modal visible={showResetConfirm} transparent animationType="fade">
+          <View style={styles.modalOverlay}>
+            <View style={[styles.modalContent, { backgroundColor: colors.surface }]}>
+              <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>Reset All Data?</Text>
+              <Text style={{ color: colors.textSecondary, fontSize: FONT_SIZE.md, marginBottom: SPACING.lg, lineHeight: 22 }}>
+                Are you sure? This will delete all your financial data permanently, including expenses, income, budgets, savings goals, and settings.
+              </Text>
+              <View style={styles.modalButtons}>
+                <TouchableOpacity
+                  style={[styles.modalBtn, { backgroundColor: colors.background }]}
+                  onPress={() => setShowResetConfirm(false)}
+                >
+                  <Text style={[styles.modalBtnText, { color: colors.textSecondary }]}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.modalBtn, { backgroundColor: colors.danger }]}
+                  onPress={() => {
+                    setShowResetConfirm(false);
+                    setResetConfirmText('');
+                    setShowResetFinal(true);
+                  }}
+                >
+                  <Text style={[styles.modalBtnText, { color: '#FFF' }]}>Yes, Reset</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+
+        {/* Reset Confirmation Modal - Step 2 (Final) */}
+        <Modal visible={showResetFinal} transparent animationType="fade">
+          <View style={styles.modalOverlay}>
+            <View style={[styles.modalContent, { backgroundColor: colors.surface }]}>
+              <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>This Cannot Be Undone</Text>
+              <Text style={{ color: colors.textSecondary, fontSize: FONT_SIZE.md, marginBottom: SPACING.md, lineHeight: 22 }}>
+                Type <Text style={{ fontWeight: '700', color: colors.danger }}>RESET</Text> to confirm deletion of all data.
+              </Text>
+              <View style={[styles.apiKeyInputWrapper, { backgroundColor: colors.background, borderColor: colors.border }]}>
+                <TextInput
+                  style={[styles.apiKeyInput, { color: colors.textPrimary }]}
+                  placeholder="Type RESET"
+                  placeholderTextColor={colors.textMuted}
+                  value={resetConfirmText}
+                  onChangeText={setResetConfirmText}
+                  autoCapitalize="characters"
+                  autoFocus
+                />
+              </View>
+              <View style={styles.modalButtons}>
+                <TouchableOpacity
+                  style={[styles.modalBtn, { backgroundColor: colors.background }]}
+                  onPress={() => {
+                    setShowResetFinal(false);
+                    setResetConfirmText('');
+                  }}
+                >
+                  <Text style={[styles.modalBtnText, { color: colors.textSecondary }]}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.modalBtn, { backgroundColor: colors.danger, opacity: resetConfirmText === 'RESET' ? 1 : 0.4 }]}
+                  onPress={async () => {
+                    if (resetConfirmText === 'RESET') {
+                      await resetAllData();
+                      setShowResetFinal(false);
+                      setResetConfirmText('');
+                    }
+                  }}
+                  disabled={resetConfirmText !== 'RESET'}
+                >
+                  <Text style={[styles.modalBtnText, { color: '#FFF' }]}>Delete Everything</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+
         {/* About */}
         <Text style={[styles.sectionLabel, { color: colors.textMuted }]}>ABOUT</Text>
         <GlassCard style={styles.card}>
@@ -448,6 +714,25 @@ const styles = StyleSheet.create({
   settingSubtitle: {
     fontSize: FONT_SIZE.sm,
     marginTop: 2,
+  },
+  themeSelectorRow: {
+    flexDirection: 'row',
+    gap: SPACING.sm,
+    marginTop: SPACING.md,
+  },
+  themeOption: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: SPACING.sm + 2,
+    borderRadius: BORDER_RADIUS.round,
+    borderWidth: 1.5,
+  },
+  themeOptionText: {
+    fontSize: FONT_SIZE.sm,
+    fontWeight: '600',
   },
   addKeyBtn: {
     paddingHorizontal: SPACING.md,

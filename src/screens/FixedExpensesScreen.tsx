@@ -9,9 +9,13 @@ import {
   Animated,
   Alert,
   Modal,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialIcons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GlassCard } from '../components/GlassCard';
 import { CategoryIcon } from '../components/CategoryIcon';
 import { useExpenseStore } from '../store/useExpenseStore';
@@ -42,7 +46,9 @@ import { formatCurrency } from '../utils/currency';
 type Tab = 'expenses' | 'income';
 
 export const FixedExpensesScreen: React.FC = () => {
+  const navigation = useNavigation<any>();
   const { colors, isDark } = useTheme();
+  const insets = useSafeAreaInsets();
   const {
     fixedExpenses,
     addFixedExpense,
@@ -68,6 +74,7 @@ export const FixedExpensesScreen: React.FC = () => {
   const [description, setDescription] = useState('');
   const [frequency, setFrequency] = useState<RecurringFrequency>('monthly');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [error, setError] = useState('');
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const expenseTotal = getFixedExpensesTotal();
@@ -82,6 +89,7 @@ export const FixedExpensesScreen: React.FC = () => {
   }, []);
 
   const openExpenseModal = (item?: FixedExpense) => {
+    setError('');
     setEditingIncome(null);
     if (item) {
       setEditingExpense(item);
@@ -100,6 +108,7 @@ export const FixedExpensesScreen: React.FC = () => {
   };
 
   const openIncomeModal = (item?: FixedIncome) => {
+    setError('');
     setEditingExpense(null);
     if (item) {
       setEditingIncome(item);
@@ -118,10 +127,16 @@ export const FixedExpensesScreen: React.FC = () => {
   };
 
   const handleSave = () => {
-    if (!amount || parseFloat(amount) <= 0) return;
+    if (!amount || isNaN(parseFloat(amount)) || parseFloat(amount) <= 0) {
+      setError('Please enter a valid amount');
+      return;
+    }
 
     if (activeTab === 'expenses' || editingExpense) {
-      if (!category) return;
+      if (!category) {
+        setError('Please select a category');
+        return;
+      }
       const data = { amount: parseFloat(amount), category, description, frequency };
       if (editingExpense) {
         updateFixedExpense(editingExpense.id, data);
@@ -129,7 +144,10 @@ export const FixedExpensesScreen: React.FC = () => {
         addFixedExpense(data);
       }
     } else {
-      if (!source) return;
+      if (!source) {
+        setError('Please select a source');
+        return;
+      }
       const data = { amount: parseFloat(amount), source, description, frequency };
       if (editingIncome) {
         updateFixedIncome(editingIncome.id, data);
@@ -145,8 +163,16 @@ export const FixedExpensesScreen: React.FC = () => {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
         <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Recurring</Text>
+        <TouchableOpacity
+          style={[styles.addBtn, { marginRight: SPACING.sm }]}
+          onPress={() => navigation.navigate('BillCalendar')}
+        >
+          <View style={[styles.addBtnGradient, { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border }]}>
+            <MaterialIcons name="calendar-month" size={20} color={colors.textSecondary} />
+          </View>
+        </TouchableOpacity>
         <TouchableOpacity
           style={styles.addBtn}
           onPress={() => activeTab === 'expenses' ? openExpenseModal() : openIncomeModal()}
@@ -228,7 +254,11 @@ export const FixedExpensesScreen: React.FC = () => {
               return (
                 <TouchableOpacity
                   key={item.id}
-                  style={[styles.listItem, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                  style={[
+                    styles.listItem,
+                    { backgroundColor: colors.surface, borderColor: colors.border },
+                    item.paused && { opacity: 0.55 },
+                  ]}
                   activeOpacity={0.7}
                   onPress={() => openExpenseModal(item)}
                 >
@@ -245,6 +275,12 @@ export const FixedExpensesScreen: React.FC = () => {
                           {FREQUENCY_OPTIONS.find((f) => f.value === (item.frequency || 'monthly'))?.label || 'Monthly'}
                         </Text>
                       </View>
+                      {item.paused && (
+                        <View style={[styles.listItemTag, { backgroundColor: 'rgba(255, 170, 0, 0.12)', borderColor: 'rgba(255, 170, 0, 0.3)' }]}>
+                          <MaterialIcons name="pause" size={10} color="#FFAA00" />
+                          <Text style={[styles.listItemTagText, { color: '#FFAA00' }]}>Paused</Text>
+                        </View>
+                      )}
                     </View>
                   </View>
                   <View style={styles.listItemRight}>
@@ -264,7 +300,7 @@ export const FixedExpensesScreen: React.FC = () => {
                 </View>
                 <Text style={[styles.emptyTitle, { color: colors.textPrimary }]}>No recurring expenses</Text>
                 <Text style={[styles.emptySubtext, { color: colors.textMuted }]}>
-                  Add recurring expenses like rent, subscriptions, and bills
+                  Track bills, subscriptions, and rent that repeat on a schedule.{'\n'}Tap the + button below to add your first one, or convert a one-time expense from the Expenses tab.
                 </Text>
               </View>
             )}
@@ -302,7 +338,11 @@ export const FixedExpensesScreen: React.FC = () => {
               return (
                 <TouchableOpacity
                   key={item.id}
-                  style={[styles.listItem, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                  style={[
+                    styles.listItem,
+                    { backgroundColor: colors.surface, borderColor: colors.border },
+                    item.paused && { opacity: 0.55 },
+                  ]}
                   activeOpacity={0.7}
                   onPress={() => openIncomeModal(item)}
                 >
@@ -321,6 +361,12 @@ export const FixedExpensesScreen: React.FC = () => {
                           {FREQUENCY_OPTIONS.find((f) => f.value === (item.frequency || 'monthly'))?.label || 'Monthly'}
                         </Text>
                       </View>
+                      {item.paused && (
+                        <View style={[styles.listItemTag, { backgroundColor: 'rgba(255, 170, 0, 0.12)', borderColor: 'rgba(255, 170, 0, 0.3)' }]}>
+                          <MaterialIcons name="pause" size={10} color="#FFAA00" />
+                          <Text style={[styles.listItemTagText, { color: '#FFAA00' }]}>Paused</Text>
+                        </View>
+                      )}
                     </View>
                   </View>
                   <View style={styles.listItemRight}>
@@ -340,7 +386,7 @@ export const FixedExpensesScreen: React.FC = () => {
                 </View>
                 <Text style={[styles.emptyTitle, { color: colors.textPrimary }]}>No recurring income</Text>
                 <Text style={[styles.emptySubtext, { color: colors.textMuted }]}>
-                  Add recurring income like salary, rental income, or dividends
+                  Track salary, freelance retainers, rental income, or dividends.{'\n'}Tap + to add, or convert a one-time income from the Income tab.
                 </Text>
               </View>
             )}
@@ -357,6 +403,7 @@ export const FixedExpensesScreen: React.FC = () => {
         presentationStyle="pageSheet"
         onRequestClose={() => setModalVisible(false)}
       >
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
         <View style={[styles.modalContainer, { backgroundColor: colors.background }]}>
           <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
             <TouchableOpacity onPress={() => setModalVisible(false)}>
@@ -380,13 +427,14 @@ export const FixedExpensesScreen: React.FC = () => {
               <TextInput
                 style={[styles.modalAmountInput, { color: colors.textPrimary }]}
                 value={amount}
-                onChangeText={setAmount}
+                onChangeText={(val) => { setError(''); setAmount(val); }}
                 placeholder="0.00"
                 placeholderTextColor={colors.textMuted}
                 keyboardType="decimal-pad"
                 autoFocus
               />
             </View>
+            {error ? <Text style={{ color: colors.danger, fontSize: 12, marginTop: 4, textAlign: 'center' }}>{error}</Text> : null}
 
             {/* Description */}
             <Text style={[styles.modalLabel, { color: colors.textMuted }]}>Description</Text>
@@ -396,6 +444,7 @@ export const FixedExpensesScreen: React.FC = () => {
               onChangeText={setDescription}
               placeholder={isEditingExpenseModal ? 'e.g., Netflix subscription' : 'e.g., Monthly salary'}
               placeholderTextColor={colors.textMuted}
+              maxLength={200}
             />
 
             {/* Frequency */}
@@ -492,6 +541,31 @@ export const FixedExpensesScreen: React.FC = () => {
               </>
             )}
 
+            {/* Pause / Resume button */}
+            {(editingExpense || editingIncome) && (
+              <TouchableOpacity
+                style={[styles.modalDeleteBtn, { marginTop: SPACING.lg, marginBottom: 0 }]}
+                onPress={() => {
+                  if (editingExpense) {
+                    updateFixedExpense(editingExpense.id, { paused: !editingExpense.paused });
+                    setEditingExpense({ ...editingExpense, paused: !editingExpense.paused });
+                  } else if (editingIncome) {
+                    updateFixedIncome(editingIncome.id, { paused: !editingIncome.paused });
+                    setEditingIncome({ ...editingIncome, paused: !editingIncome.paused });
+                  }
+                }}
+              >
+                <MaterialIcons
+                  name={(editingExpense?.paused || editingIncome?.paused) ? 'play-arrow' : 'pause'}
+                  size={20}
+                  color={COLORS.warning}
+                />
+                <Text style={[styles.modalDeleteText, { color: COLORS.warning }]}>
+                  {(editingExpense?.paused || editingIncome?.paused) ? 'Resume' : 'Pause'} {editingExpense ? 'Expense' : 'Income'}
+                </Text>
+              </TouchableOpacity>
+            )}
+
             {/* Delete button */}
             {(editingExpense || editingIncome) && (
               <TouchableOpacity
@@ -506,6 +580,7 @@ export const FixedExpensesScreen: React.FC = () => {
             )}
           </ScrollView>
         </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Delete Confirmation Modal */}
@@ -837,6 +912,7 @@ const styles = StyleSheet.create({
     color: COLORS.textPrimary,
     fontWeight: '800',
     flex: 1,
+    paddingVertical: 4,
   },
   modalInput: {
     backgroundColor: COLORS.surface,
@@ -847,6 +923,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     borderWidth: 1,
     borderColor: COLORS.border,
+    minHeight: 24,
   },
   frequencyRow: {
     flexDirection: 'row',
