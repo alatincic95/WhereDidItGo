@@ -11,6 +11,7 @@ export interface Expense {
   receiptUri?: string; // local URI to receipt photo
   tags?: string[]; // cross-cutting labels (e.g., "Vacation", "Tax-deductible")
   splits?: ExpenseSplit[]; // optional split across categories/budgets; sum equals amount
+  pinned?: boolean; // pinned expenses appear at top of expense list
 }
 
 export interface ExpenseSplit {

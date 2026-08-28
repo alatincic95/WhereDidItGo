@@ -20,12 +20,14 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SPACING, FONT_SIZE, BORDER_RADIUS } from '../constants/theme';
 import { exportBackup, pickAndReadBackupFile } from '../utils/exportData';
 import { shareBackupToCloud, generateTransferData, parseTransferData } from '../utils/cloudBackup';
+import { pickAndReadCsvFile, parseCsvImport } from '../utils/csvImport';
+import type { IncomeSource } from '../types';
 
 export const DataTransferScreen: React.FC = () => {
   const navigation = useNavigation();
   const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
-  const { getBackupState, restoreFromBackup, setLastBackupDate } = useExpenseStore();
+  const { getBackupState, restoreFromBackup, setLastBackupDate, addExpense, addIncome, addFixedExpense, addFixedIncome } = useExpenseStore();
 
   const [transferCode, setTransferCode] = useState('');
   const [showCodeModal, setShowCodeModal] = useState(false);
@@ -36,6 +38,9 @@ export const DataTransferScreen: React.FC = () => {
   const [restoreConfirmOpen, setRestoreConfirmOpen] = useState(false);
   const [pendingRestore, setPendingRestore] = useState<any>(null);
   const [restoreMessage, setRestoreMessage] = useState('');
+  const [csvConfirmOpen, setCsvConfirmOpen] = useState(false);
+  const [pendingCsvData, setPendingCsvData] = useState<any>(null);
+  const [csvStats, setCsvStats] = useState('');
 
   const showStatus = (msg: string, type: 'success' | 'error') => {
     setStatusMessage(msg);
@@ -110,6 +115,42 @@ export const DataTransferScreen: React.FC = () => {
     } catch {
       showStatus('Invalid transfer code', 'error');
     }
+  };
+
+  const handleCsvImport = async () => {
+    const result = await pickAndReadCsvFile();
+    if (!result.valid) {
+      showStatus(result.error, 'error');
+      return;
+    }
+    setPendingCsvData(result.data);
+    setCsvStats(result.stats);
+    setCsvConfirmOpen(true);
+  };
+
+  const handleConfirmCsvImport = () => {
+    if (!pendingCsvData) return;
+    const { expenses, incomes, fixedExpenses, fixedIncomes } = pendingCsvData;
+    let count = 0;
+    for (const e of expenses) {
+      addExpense({ amount: e.amount, category: e.category, description: e.description, date: e.date, isFixed: false });
+      count++;
+    }
+    for (const i of incomes) {
+      addIncome({ amount: i.amount, source: (i.source || 'Other') as IncomeSource, description: i.description, date: i.date });
+      count++;
+    }
+    for (const fe of fixedExpenses) {
+      addFixedExpense({ amount: fe.amount, category: fe.category, description: fe.description });
+      count++;
+    }
+    for (const fi of fixedIncomes) {
+      addFixedIncome({ amount: fi.amount, source: fi.source, description: fi.description });
+      count++;
+    }
+    setCsvConfirmOpen(false);
+    setPendingCsvData(null);
+    showStatus(`Imported ${count} items successfully`, 'success');
   };
 
   const handleCopyCode = async () => {
@@ -242,6 +283,23 @@ export const DataTransferScreen: React.FC = () => {
           </TouchableOpacity>
         </GlassCard>
 
+        {/* CSV Import Section */}
+        <Text style={[styles.sectionLabel, { color: colors.textMuted }]}>CSV IMPORT</Text>
+        <GlassCard style={styles.card}>
+          <TouchableOpacity style={styles.optionRow} onPress={handleCsvImport}>
+            <View style={[styles.optionIcon, { backgroundColor: `${colors.success}15` }]}>
+              <MaterialIcons name="table-chart" size={24} color={colors.success} />
+            </View>
+            <View style={styles.optionInfo}>
+              <Text style={[styles.optionTitle, { color: colors.textPrimary }]}>Import from CSV</Text>
+              <Text style={[styles.optionDesc, { color: colors.textSecondary }]}>
+                Import expenses and income from a WhereDidItGo CSV export
+              </Text>
+            </View>
+            <MaterialIcons name="chevron-right" size={22} color={colors.textMuted} />
+          </TouchableOpacity>
+        </GlassCard>
+
         <View style={{ height: 120 }} />
       </ScrollView>
 
@@ -343,6 +401,54 @@ export const DataTransferScreen: React.FC = () => {
           </View>
         </TouchableOpacity>
         </KeyboardAvoidingView>
+      </Modal>
+
+      {/* CSV Import Confirmation */}
+      <Modal
+        visible={csvConfirmOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => {
+          setCsvConfirmOpen(false);
+          setPendingCsvData(null);
+        }}
+      >
+        <TouchableOpacity
+          style={[styles.modalOverlay, { backgroundColor: colors.overlay }]}
+          activeOpacity={1}
+          onPress={() => {
+            setCsvConfirmOpen(false);
+            setPendingCsvData(null);
+          }}
+        >
+          <View
+            style={[styles.modalContent, { backgroundColor: isDark ? colors.backgroundCard : colors.surface }]}
+            onStartShouldSetResponder={() => true}
+          >
+            <MaterialIcons name="table-chart" size={40} color={colors.success} />
+            <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>Import CSV Data?</Text>
+            <Text style={[styles.modalDesc, { color: colors.textSecondary }]}>
+              {`Found ${csvStats}.\n\nThese items will be added to your existing data.`}
+            </Text>
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={[styles.modalCancelBtn, { borderColor: colors.border }]}
+                onPress={() => {
+                  setCsvConfirmOpen(false);
+                  setPendingCsvData(null);
+                }}
+              >
+                <Text style={[styles.modalCancelText, { color: colors.textSecondary }]}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={handleConfirmCsvImport}>
+                <LinearGradient colors={[colors.success, '#00B894']} style={styles.modalConfirmBtn}>
+                  <MaterialIcons name="file-download" size={18} color="#FFF" />
+                  <Text style={styles.modalConfirmText}>Import</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </TouchableOpacity>
       </Modal>
 
       {/* Restore Confirmation */}

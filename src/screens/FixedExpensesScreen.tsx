@@ -14,7 +14,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialIcons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GlassCard } from '../components/GlassCard';
 import { CategoryIcon } from '../components/CategoryIcon';
@@ -47,8 +47,10 @@ type Tab = 'expenses' | 'income';
 
 export const FixedExpensesScreen: React.FC = () => {
   const navigation = useNavigation<any>();
+  const route = useRoute<any>();
   const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
+  const highlightId: string | undefined = route.params?.highlightId;
   const {
     fixedExpenses,
     addFixedExpense,
@@ -75,6 +77,7 @@ export const FixedExpensesScreen: React.FC = () => {
   const [frequency, setFrequency] = useState<RecurringFrequency>('monthly');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [error, setError] = useState('');
+  const [highlightedItemId, setHighlightedItemId] = useState<string | undefined>(highlightId);
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const expenseTotal = getFixedExpensesTotal();
@@ -87,6 +90,17 @@ export const FixedExpensesScreen: React.FC = () => {
       useNativeDriver: true,
     }).start();
   }, []);
+
+  // Auto-switch tab and clear highlight after delay
+  useEffect(() => {
+    if (highlightId) {
+      const isIncome = fixedIncomes.some((i) => i.id === highlightId);
+      if (isIncome) setActiveTab('income');
+      else setActiveTab('expenses');
+      const timer = setTimeout(() => setHighlightedItemId(undefined), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [highlightId]);
 
   const openExpenseModal = (item?: FixedExpense) => {
     setError('');
@@ -264,6 +278,7 @@ export const FixedExpensesScreen: React.FC = () => {
                     styles.listItem,
                     { backgroundColor: colors.surface, borderColor: colors.border },
                     item.paused && { opacity: 0.55 },
+                    highlightedItemId === item.id && { borderColor: colors.primary, borderWidth: 2, backgroundColor: `${colors.primary}12` },
                   ]}
                   activeOpacity={0.7}
                   onPress={() => openExpenseModal(item)}
@@ -348,6 +363,7 @@ export const FixedExpensesScreen: React.FC = () => {
                     styles.listItem,
                     { backgroundColor: colors.surface, borderColor: colors.border },
                     item.paused && { opacity: 0.55 },
+                    highlightedItemId === item.id && { borderColor: colors.success, borderWidth: 2, backgroundColor: `${colors.success}12` },
                   ]}
                   activeOpacity={0.7}
                   onPress={() => openIncomeModal(item)}

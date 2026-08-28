@@ -35,7 +35,7 @@ import { suggestCategory } from '../utils/categorySuggester';
 import { scanReceipt } from '../utils/receiptOcr';
 import { hasApiKey } from '../assistant/config';
 import { useUndoStore } from '../store/useUndoStore';
-import { hapticSuccess, hapticError, hapticWarning } from '../utils/haptics';
+import { hapticSuccess, hapticError, hapticWarning, hapticLight } from '../utils/haptics';
 import {
   AmountInput,
   CurrencySelector,
@@ -58,7 +58,7 @@ export const AddExpenseScreen: React.FC = () => {
   const editingExpense: Expense | undefined = route.params?.expense;
   const preselectedProjectId: string | undefined = route.params?.projectId;
 
-  const { addExpense, addExpenseWithId, updateExpense, deleteExpense, budgets, currencySymbol, customCategories, addCustomCategory, exchangeRates, getOrderedCategories, getAllTags, convertExpenseToRecurring, addExpenseTemplate, expenses: allExpenses } = useExpenseStore();
+  const { addExpense, addExpenseWithId, updateExpense, deleteExpense, togglePinExpense, budgets, currencySymbol, customCategories, addCustomCategory, exchangeRates, getOrderedCategories, getAllTags, convertExpenseToRecurring, addExpenseTemplate, expenses: allExpenses } = useExpenseStore();
   const showUndo = useUndoStore((s) => s.show);
 
   const [amount, setAmount] = useState(editingExpense?.amount?.toString() || '');
@@ -424,6 +424,24 @@ export const AddExpenseScreen: React.FC = () => {
               <MaterialIcons name={templateSaved ? 'check-circle' : 'bolt'} size={20} color={colors.warning} />
               <Text style={[styles.convertBtnText, { color: colors.warning }]}>
                 {templateSaved ? 'Template Saved!' : 'Save as Template'}
+              </Text>
+            </TouchableOpacity>
+          )}
+
+          {/* Pin/Unpin (edit mode only) */}
+          {editingExpense && !editingExpense.isFixed && (
+            <TouchableOpacity
+              style={[styles.convertBtn, { borderColor: `${colors.warning}4D`, backgroundColor: `${colors.warning}14` }]}
+              activeOpacity={0.8}
+              onPress={() => {
+                togglePinExpense(editingExpense.id);
+                hapticLight();
+                navigation.goBack();
+              }}
+            >
+              <MaterialIcons name={editingExpense.pinned ? 'push-pin' : 'push-pin'} size={20} color={colors.warning} />
+              <Text style={[styles.convertBtnText, { color: colors.warning }]}>
+                {editingExpense.pinned ? 'Unpin Expense' : 'Pin to Top'}
               </Text>
             </TouchableOpacity>
           )}

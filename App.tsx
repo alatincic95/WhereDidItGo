@@ -12,6 +12,7 @@ import { UndoSnackbar } from './src/components/UndoSnackbar';
 import { ErrorBoundary } from './src/components/ErrorBoundary';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { scheduleBillReminders, scheduleMonthlyRecap, scheduleBackupReminder } from './src/utils/localNotifications';
+import { buildWidgetData, syncWidgetData } from './src/utils/widgetData';
 
 const LOCK_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
 
@@ -128,6 +129,10 @@ function AppContent() {
         scheduleBackupReminder(lastBackupDate);
       }
     }
+    // Sync widget data for home screen widgets (native builds)
+    const store = useExpenseStore.getState();
+    const widgetData = buildWidgetData(store);
+    syncWidgetData(widgetData);
   }, []);
 
   return (

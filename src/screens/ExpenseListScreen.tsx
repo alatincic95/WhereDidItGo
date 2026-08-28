@@ -69,7 +69,7 @@ export const ExpenseListScreen: React.FC = () => {
   const { colors, isDark } = useTheme();
   const navigation = useNavigation<any>();
   const insets = useSafeAreaInsets();
-  const { expenses, fixedExpenses, incomes, fixedIncomes, getMonthlyExpenses, deleteExpense, updateExpense, addExpenseWithId, getMonthlyTotal, getFixedExpensesTotal, currencySymbol, customCategories, getOrderedCategories } = useExpenseStore();
+  const { expenses, fixedExpenses, incomes, fixedIncomes, getMonthlyExpenses, deleteExpense, updateExpense, addExpenseWithId, togglePinExpense, getMonthlyTotal, getFixedExpensesTotal, currencySymbol, customCategories, getOrderedCategories } = useExpenseStore();
   const showUndo = useUndoStore((s) => s.show);
   const [selectedMonth, setSelectedMonth] = useState<number | null>(new Date().getMonth());
   const [selectedYear] = useState(new Date().getFullYear());
@@ -207,6 +207,9 @@ export const ExpenseListScreen: React.FC = () => {
       result.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     }
 
+    // Pinned items float to top
+    result.sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0));
+
     return result;
   }, [monthlyExpenses, selectedCategories, minAmount, maxAmount, sortMode, searchText, dateFrom, dateTo]);
 
@@ -236,7 +239,10 @@ export const ExpenseListScreen: React.FC = () => {
           return;
         }
         if (expense.isFixed) {
-          navigation.navigate('Main', { screen: 'Fixed' });
+          // Extract parent recurring ID from deterministic format: recurring-{fixedId}-{date}
+          const match = expense.id.match(/^recurring-(.+)-\d{4}-\d{2}-\d{2}$/);
+          const highlightId = match?.[1];
+          navigation.navigate('Main', { screen: 'Fixed', params: { highlightId } });
           return;
         }
         navigation.navigate('AddExpense', { expense });
@@ -274,6 +280,11 @@ export const ExpenseListScreen: React.FC = () => {
           {expense.splits && expense.splits.length > 0 && (
             <View style={[styles.recurringBadge, { backgroundColor: `${colors.primary}20` }]}>
               <MaterialIcons name="call-split" size={10} color={COLORS.warning} />
+            </View>
+          )}
+          {expense.pinned && (
+            <View style={[styles.recurringBadge, { backgroundColor: `${colors.warning}20` }]}>
+              <MaterialIcons name="push-pin" size={10} color={colors.warning} />
             </View>
           )}
           {expense.tags && expense.tags.length > 0 && expense.tags.slice(0, 2).map((t) => (

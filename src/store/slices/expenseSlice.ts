@@ -13,6 +13,7 @@ export interface ExpenseSlice {
   updateExpense: (id: string, expense: Partial<Expense>) => void;
   deleteExpense: (id: string) => void;
   markExpenseCompleted: (id: string) => void;
+  togglePinExpense: (id: string) => void;
   convertExpenseToRecurring: (id: string, frequency: RecurringFrequency) => void;
   getAllTags: () => string[];
 
@@ -137,6 +138,13 @@ export const createExpenseSlice: StateCreator<StoreState, [], [], ExpenseSlice> 
     set((state) => ({
       expenses: state.expenses.map((e) =>
         e.id === id ? { ...e, isPending: false } : e
+      ),
+    })),
+
+  togglePinExpense: (id) =>
+    set((state) => ({
+      expenses: state.expenses.map((e) =>
+        e.id === id ? { ...e, pinned: !e.pinned } : e
       ),
     })),
 
