@@ -323,7 +323,7 @@ export const ProjectDetailScreen: React.FC = () => {
                 >
                   <CategoryIcon category={expense.category} size={42} />
                   <View style={styles.expenseInfo}>
-                    <Text style={[styles.expenseDesc, { color: colors.textPrimary }]}>
+                    <Text style={[styles.expenseDesc, { color: colors.textPrimary }]} numberOfLines={1}>
                       {expense.description || expense.category}
                     </Text>
                     <Text style={[styles.expenseDate, { color: colors.textMuted }]}>{formatDate(expense.date)}</Text>
@@ -335,6 +335,8 @@ export const ProjectDetailScreen: React.FC = () => {
                 <TouchableOpacity
                   style={styles.completeBtn}
                   onPress={() => markExpenseCompleted(expense.id)}
+                  accessibilityLabel="Mark expense as completed"
+                  accessibilityRole="button"
                 >
                   <MaterialIcons name="check-circle-outline" size={22} color={COLORS.success} />
                 </TouchableOpacity>

@@ -180,6 +180,9 @@ export const SavingsGoalsScreen: React.FC = () => {
           setGoalToDelete(goal);
           setShowDeleteConfirm(true);
         }}
+        accessibilityLabel={`${goal.name}, ${Math.round(progress)}% complete, ${formatCurrency(goal.currentAmount)} of ${formatCurrency(goal.targetAmount)}`}
+        accessibilityRole="button"
+        accessibilityHint="Tap to edit, long press to delete"
       >
         <View style={[styles.goalCard, { backgroundColor: colors.surface, borderColor: colors.border }, isComplete && [styles.goalCardComplete, { borderColor: 'rgba(0, 214, 143, 0.2)' }]]}>
           <View style={[styles.goalAccent, { backgroundColor: goal.color }]} />

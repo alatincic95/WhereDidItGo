@@ -164,12 +164,14 @@ export const IncomeListScreen: React.FC = () => {
         style={[styles.incomeItem, { borderColor: `${sourceColor}15`, backgroundColor: colors.surface }]}
         activeOpacity={0.7}
         onPress={() => navigation.navigate('AddIncome', { income })}
+        accessibilityLabel={`${income.description || income.source}, ${income.amount.toFixed(2)}`}
+        accessibilityRole="button"
       >
         <View style={[styles.incomeIconWrap, { backgroundColor: `${sourceColor}20` }]}>
           <MaterialIcons name={sourceIcon as any} size={22} color={sourceColor} />
         </View>
         <View style={styles.incomeInfo}>
-          <Text style={[styles.incomeDesc, { color: colors.textPrimary }]}>
+          <Text style={[styles.incomeDesc, { color: colors.textPrimary }]} numberOfLines={1}>
             {income.description || income.source}
           </Text>
           <Text style={[styles.incomeSource, { color: sourceColor }]}>{income.source}</Text>
@@ -231,12 +233,16 @@ export const IncomeListScreen: React.FC = () => {
         <TouchableOpacity
           style={[styles.filterBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
           onPress={() => exportCsv({ expenses: expenses.filter((e) => !e.isFixed), incomes, fixedExpenses, fixedIncomes })}
+          accessibilityLabel="Export data as CSV"
+          accessibilityRole="button"
         >
           <MaterialIcons name="file-download" size={22} color={colors.textMuted} />
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.filterBtn, { backgroundColor: colors.surface, borderColor: colors.border }, hasActiveFilters && styles.filterBtnActive]}
           onPress={() => setFilterOpen(true)}
+          accessibilityLabel={hasActiveFilters ? 'Filters active, tap to edit' : 'Open filters'}
+          accessibilityRole="button"
         >
           <MaterialIcons
             name="tune"

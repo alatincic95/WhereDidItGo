@@ -38,10 +38,13 @@ export const TagsInput: React.FC<TagsInputProps> = ({
 }) => {
   const { colors } = useTheme();
 
+  const MAX_TAGS = 10;
+
   const addTag = (raw: string) => {
     const t = raw.trim();
     if (!t) return;
     if (tags.includes(t)) return;
+    if (tags.length >= MAX_TAGS) return;
     setTags([...tags, t]);
     setTagInput('');
   };

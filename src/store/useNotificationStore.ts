@@ -54,9 +54,15 @@ export const useNotificationStore = create<NotificationState>()(
       createdAt: new Date().toISOString(),
       relatedId,
     };
-    set((state) => ({
-      notifications: [notification, ...state.notifications],
-    }));
+    set((state) => {
+      const MAX_NOTIFICATIONS = 50;
+      const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
+      let notifs = [notification, ...state.notifications];
+      // Remove notifications older than 30 days and cap at 50
+      notifs = notifs.filter((n) => new Date(n.createdAt).getTime() > thirtyDaysAgo);
+      if (notifs.length > MAX_NOTIFICATIONS) notifs = notifs.slice(0, MAX_NOTIFICATIONS);
+      return { notifications: notifs };
+    });
   },
 
   markAsRead: (id) =>

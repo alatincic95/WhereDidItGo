@@ -191,6 +191,9 @@ export const FixedExpensesScreen: React.FC = () => {
         <TouchableOpacity
           style={[styles.tab, activeTab === 'expenses' && styles.tabActiveExpense]}
           onPress={() => setActiveTab('expenses')}
+          accessibilityRole="tab"
+          accessibilityState={{ selected: activeTab === 'expenses' }}
+          accessibilityLabel="Recurring expenses"
         >
           <MaterialIcons
             name="trending-down"
@@ -204,6 +207,9 @@ export const FixedExpensesScreen: React.FC = () => {
         <TouchableOpacity
           style={[styles.tab, activeTab === 'income' && styles.tabActiveIncome]}
           onPress={() => setActiveTab('income')}
+          accessibilityRole="tab"
+          accessibilityState={{ selected: activeTab === 'income' }}
+          accessibilityLabel="Recurring income"
         >
           <MaterialIcons
             name="trending-up"

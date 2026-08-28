@@ -228,6 +228,8 @@ export const ExpenseListScreen: React.FC = () => {
         isSelected && { borderColor: colors.primary, backgroundColor: `${colors.primary}12` },
       ]}
       activeOpacity={0.7}
+      accessibilityLabel={`${expense.description || expense.category}, ${expense.amount.toFixed(2)}`}
+      accessibilityRole="button"
       onPress={() => {
         if (selectionMode) {
           toggleSelection(expense.id);
@@ -254,11 +256,11 @@ export const ExpenseListScreen: React.FC = () => {
       )}
       <CategoryIcon category={expense.category} size={44} />
       <View style={styles.expenseInfo}>
-        <Text style={[styles.expenseDesc, { color: colors.textPrimary }]}>
+        <Text style={[styles.expenseDesc, { color: colors.textPrimary }]} numberOfLines={1}>
           {expense.description || expense.category}
         </Text>
         <View style={styles.expenseMeta}>
-          <Text style={[styles.expenseCategory, { color: colors.textMuted }]}>{expense.category}</Text>
+          <Text style={[styles.expenseCategory, { color: colors.textMuted }]} numberOfLines={1}>{expense.category}</Text>
           {expense.isFixed && (
             <View style={[styles.recurringBadge, { backgroundColor: `${colors.primary}20` }]}>
               <MaterialIcons name="autorenew" size={10} color={colors.primary} />
@@ -314,7 +316,7 @@ export const ExpenseListScreen: React.FC = () => {
       {/* Selection Mode Bar */}
       {selectionMode && (
         <View style={[styles.selectionBar, { backgroundColor: colors.primary + '15', borderColor: colors.primary + '30' }]}>
-          <TouchableOpacity onPress={exitSelectionMode}>
+          <TouchableOpacity onPress={exitSelectionMode} accessibilityLabel="Exit selection mode" accessibilityRole="button">
             <MaterialIcons name="close" size={22} color={colors.textPrimary} />
           </TouchableOpacity>
           <Text style={[styles.selectionCount, { color: colors.textPrimary }]}>
@@ -325,6 +327,8 @@ export const ExpenseListScreen: React.FC = () => {
             style={[styles.bulkBtn, { backgroundColor: colors.primary + '20' }]}
             onPress={() => setShowBulkCategoryModal(true)}
             disabled={selectedIds.size === 0}
+            accessibilityLabel="Re-categorize selected expenses"
+            accessibilityRole="button"
           >
             <MaterialIcons name="category" size={18} color={colors.primary} />
             <Text style={[styles.bulkBtnText, { color: colors.primary }]}>Re-categorize</Text>
@@ -333,6 +337,8 @@ export const ExpenseListScreen: React.FC = () => {
             style={[styles.bulkBtn, { backgroundColor: colors.danger + '20' }]}
             onPress={() => setShowBulkDeleteConfirm(true)}
             disabled={selectedIds.size === 0}
+            accessibilityLabel="Delete selected expenses"
+            accessibilityRole="button"
           >
             <MaterialIcons name="delete-outline" size={18} color={colors.danger} />
             <Text style={[styles.bulkBtnText, { color: colors.danger }]}>Delete</Text>
@@ -360,12 +366,16 @@ export const ExpenseListScreen: React.FC = () => {
         <TouchableOpacity
           style={[styles.filterBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
           onPress={() => exportCsv({ expenses: expenses.filter((e) => !e.isFixed), incomes, fixedExpenses, fixedIncomes })}
+          accessibilityLabel="Export data as CSV"
+          accessibilityRole="button"
         >
           <MaterialIcons name="file-download" size={22} color={colors.textMuted} />
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.filterBtn, { backgroundColor: colors.surface, borderColor: colors.border }, hasActiveFilters && styles.filterBtnActive]}
           onPress={() => setFilterOpen(true)}
+          accessibilityLabel={hasActiveFilters ? 'Filters active, tap to edit' : 'Open filters'}
+          accessibilityRole="button"
         >
           <MaterialIcons
             name="tune"
