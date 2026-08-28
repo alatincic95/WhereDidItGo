@@ -57,7 +57,7 @@ export const AddExpenseScreen: React.FC = () => {
   const editingExpense: Expense | undefined = route.params?.expense;
   const preselectedProjectId: string | undefined = route.params?.projectId;
 
-  const { addExpense, addExpenseWithId, updateExpense, deleteExpense, budgets, currencySymbol, customCategories, addCustomCategory, exchangeRates, getOrderedCategories, getAllTags, convertExpenseToRecurring, expenses: allExpenses } = useExpenseStore();
+  const { addExpense, addExpenseWithId, updateExpense, deleteExpense, budgets, currencySymbol, customCategories, addCustomCategory, exchangeRates, getOrderedCategories, getAllTags, convertExpenseToRecurring, addExpenseTemplate, expenses: allExpenses } = useExpenseStore();
   const showUndo = useUndoStore((s) => s.show);
 
   const [amount, setAmount] = useState(editingExpense?.amount?.toString() || '');
@@ -92,6 +92,7 @@ export const AddExpenseScreen: React.FC = () => {
 
   // Validation
   const [error, setError] = useState('');
+  const [templateSaved, setTemplateSaved] = useState(false);
 
   // Receipt OCR
   const [scanning, setScanning] = useState(false);
@@ -235,6 +236,29 @@ export const AddExpenseScreen: React.FC = () => {
       });
       navigation.goBack();
     }
+  };
+
+  const handleSaveAsTemplate = () => {
+    if (!amount || isNaN(parseFloat(amount)) || parseFloat(amount) <= 0) {
+      setError('Enter a valid amount to save as template');
+      return;
+    }
+    if (!category) {
+      setError('Select a category to save as template');
+      return;
+    }
+    const name = description.trim() || category;
+    addExpenseTemplate({
+      name,
+      amount: parseFloat(amount),
+      category,
+      description: description.trim(),
+      currency: expenseCurrency,
+      tags: tags.length > 0 ? tags : undefined,
+      icon: 'bolt',
+    });
+    setTemplateSaved(true);
+    setTimeout(() => setTemplateSaved(false), 2000);
   };
 
   const handleSaveNewCategory = () => {
@@ -381,6 +405,20 @@ export const AddExpenseScreen: React.FC = () => {
             fadeAnim={fadeAnim}
             slideAnim={slideAnim}
           />
+
+          {/* Save as Template */}
+          {!editingExpense && (
+            <TouchableOpacity
+              style={[styles.convertBtn, { borderColor: `${colors.warning}4D`, backgroundColor: `${colors.warning}14` }]}
+              activeOpacity={0.8}
+              onPress={handleSaveAsTemplate}
+            >
+              <MaterialIcons name={templateSaved ? 'check-circle' : 'bolt'} size={20} color={colors.warning} />
+              <Text style={[styles.convertBtnText, { color: colors.warning }]}>
+                {templateSaved ? 'Template Saved!' : 'Save as Template'}
+              </Text>
+            </TouchableOpacity>
+          )}
 
           {/* Convert to Recurring (edit mode only) */}
           {editingExpense && (

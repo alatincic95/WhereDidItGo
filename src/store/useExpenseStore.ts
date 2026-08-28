@@ -44,6 +44,7 @@ export const useExpenseStore = create<StoreState>()(
         currencySymbol: state.currencySymbol,
         savingsGoals: state.savingsGoals,
         budgetTemplates: state.budgetTemplates,
+        expenseTemplates: state.expenseTemplates,
         categoryBudgets: state.categoryBudgets,
         dashboardCards: state.dashboardCards,
         themeMode: state.themeMode,

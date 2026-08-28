@@ -1,11 +1,12 @@
 import { StateCreator } from 'zustand';
-import { Expense, FixedExpense, RecurringFrequency, FREQUENCY_TO_MONTHLY } from '../../types';
+import { Expense, FixedExpense, ExpenseTemplate, RecurringFrequency, FREQUENCY_TO_MONTHLY } from '../../types';
 import { StoreState } from '../useExpenseStore';
 import { uuidv4 } from '../utils';
 
 export interface ExpenseSlice {
   expenses: Expense[];
   fixedExpenses: FixedExpense[];
+  expenseTemplates: ExpenseTemplate[];
 
   addExpense: (expense: Omit<Expense, 'id'>) => void;
   addExpenseWithId: (expense: Expense) => void;
@@ -18,6 +19,10 @@ export interface ExpenseSlice {
   addFixedExpense: (expense: Omit<FixedExpense, 'id'>) => void;
   updateFixedExpense: (id: string, expense: Partial<FixedExpense>) => void;
   deleteFixedExpense: (id: string) => void;
+
+  addExpenseTemplate: (template: Omit<ExpenseTemplate, 'id' | 'createdAt'>) => void;
+  deleteExpenseTemplate: (id: string) => void;
+  addExpenseFromTemplate: (templateId: string) => void;
 
   getMonthlyExpenses: (month: string) => Expense[];
   getMonthlyTotal: (month: string) => number;
@@ -104,6 +109,8 @@ export const createExpenseSlice: StateCreator<StoreState, [], [], ExpenseSlice> 
     { id: 'f3', amount: 49.99, category: 'Bills', description: 'Internet' },
   ],
 
+  expenseTemplates: [],
+
   addExpense: (expense) =>
     set((state) => ({
       expenses: [{ ...expense, id: uuidv4() }, ...state.expenses],
@@ -169,6 +176,34 @@ export const createExpenseSlice: StateCreator<StoreState, [], [], ExpenseSlice> 
     set((state) => ({
       fixedExpenses: state.fixedExpenses.filter((e) => e.id !== id),
     })),
+
+  addExpenseTemplate: (template) =>
+    set((state) => ({
+      expenseTemplates: [
+        { ...template, id: uuidv4(), createdAt: new Date().toISOString() },
+        ...state.expenseTemplates,
+      ],
+    })),
+
+  deleteExpenseTemplate: (id) =>
+    set((state) => ({
+      expenseTemplates: state.expenseTemplates.filter((t) => t.id !== id),
+    })),
+
+  addExpenseFromTemplate: (templateId) => {
+    const { expenseTemplates } = get();
+    const template = expenseTemplates.find((t) => t.id === templateId);
+    if (!template) return;
+    get().addExpense({
+      amount: template.amount,
+      category: template.category,
+      description: template.description,
+      date: new Date().toISOString(),
+      isFixed: false,
+      currency: template.currency,
+      tags: template.tags,
+    });
+  },
 
   getMonthlyExpenses: (month) => {
     const { expenses } = get();

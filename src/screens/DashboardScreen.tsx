@@ -31,6 +31,7 @@ import {
   DashboardFAB,
   DashboardModals,
   QuickAddBar,
+  ExpenseTemplatesRow,
   getCurrentMonth,
   getCurrentMonthName,
   getGreeting,
@@ -283,6 +284,11 @@ export const DashboardScreen: React.FC = () => {
         {/* Quick Add Bar */}
         <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
           <QuickAddBar />
+        </Animated.View>
+
+        {/* Expense Templates */}
+        <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
+          <ExpenseTemplatesRow />
         </Animated.View>
 
         {/* Spending Insights */}

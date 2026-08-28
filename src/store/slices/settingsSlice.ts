@@ -275,6 +275,7 @@ export const createSettingsSlice: StateCreator<StoreState, [], [], SettingsSlice
       exchangeRates: [],
       savingsGoals: [],
       budgetTemplates: [],
+      expenseTemplates: [],
       categoryBudgets: [],
       dashboardCards: DEFAULT_DASHBOARD_CARDS,
       initialBalance: 0,

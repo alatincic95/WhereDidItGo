@@ -202,6 +202,18 @@ export interface SavingsGoal {
   lastAutoContribution?: string; // YYYY-MM of the last processed auto-contribution
 }
 
+export interface ExpenseTemplate {
+  id: string;
+  name: string;
+  amount: number;
+  category: string;
+  description: string;
+  currency?: string;
+  tags?: string[];
+  icon: string;
+  createdAt: string;
+}
+
 export interface BudgetTemplate {
   id: string;
   name: string;
