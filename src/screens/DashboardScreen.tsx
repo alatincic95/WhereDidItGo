@@ -34,6 +34,7 @@ import {
   ExpenseTemplatesRow,
   AccountAvatar,
   AccountSwitcherModal,
+  CryptoSummaryCard,
   getCurrentMonth,
   getCurrentMonthName,
   getGreeting,
@@ -89,6 +90,8 @@ export const DashboardScreen: React.FC = () => {
     getCategoryBudgetStatus,
     dashboardCards,
     selectedAccountId,
+    cryptoHoldings,
+    getCryptoPortfolioValue,
   } = useExpenseStore();
 
   const { getUnreadCount, generateSmartNotifications } = useNotificationStore();
@@ -339,8 +342,8 @@ export const DashboardScreen: React.FC = () => {
           switch (card.id) {
             case 'summary':
               return (
+                <React.Fragment key="summary">
                 <Animated.View
-                  key="summary"
                   style={[styles.monthlyRow, { opacity: cardFades[animIdx], transform: [{ translateY: cardSlides[animIdx] }] }]}
                 >
                   <SummaryCards
@@ -370,6 +373,17 @@ export const DashboardScreen: React.FC = () => {
                     }}
                   />
                 </Animated.View>
+                {cryptoHoldings.length > 0 && (
+                  <View style={{ marginBottom: SPACING.lg }}>
+                    <CryptoSummaryCard
+                      portfolioValue={getCryptoPortfolioValue()}
+                      holdingsCount={cryptoHoldings.length}
+                      formatCurrency={formatCurrency}
+                      onPress={() => navigation.navigate('Crypto')}
+                    />
+                  </View>
+                )}
+              </React.Fragment>
               );
             case 'budgetUsage':
               if (viewMode !== 'monthly' || totalIncomeThisMonth <= 0) return null;

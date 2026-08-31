@@ -11,6 +11,7 @@ export { QuickAddBar } from './QuickAddBar';
 export { AccountAvatar } from './AccountAvatar';
 export { AccountSwitcherModal } from './AccountSwitcherModal';
 export { ExpenseTemplatesRow } from './ExpenseTemplatesRow';
+export { CryptoSummaryCard } from './CryptoSummaryCard';
 export {
   getCurrentMonth,
   getCurrentMonthName,

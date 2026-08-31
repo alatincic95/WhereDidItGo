@@ -36,7 +36,7 @@ export const fetchTopCoins = async (
   count = 100,
 ): Promise<CoinMarketData[]> => {
   const res = await fetch(
-    `${BASE_URL}/coins/markets?vs_currency=${vsCurrency}&order=market_cap_desc&per_page=${count}&page=1&sparkline=true&price_change_percentage=7d`,
+    `${BASE_URL}/coins/markets?vs_currency=${vsCurrency}&order=market_cap_desc&per_page=${count}&page=1&sparkline=false&price_change_percentage=7d`,
   );
   if (!res.ok) throw new Error(`CoinGecko error: ${res.status}`);
   return res.json();
@@ -99,6 +99,27 @@ export const searchCoins = async (query: string): Promise<CoinSearchResult[]> =>
   if (!res.ok) throw new Error(`CoinGecko error: ${res.status}`);
   const data = await res.json();
   return (data.coins || []).slice(0, 20);
+};
+
+const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/** Fetch historical market chart data for a coin (with retry on 429) */
+export const fetchCoinChart = async (
+  coinId: string,
+  vsCurrency: string,
+  days: number,
+): Promise<{ timestamp: number; price: number }[]> => {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    if (attempt > 0) await delay(2000 * attempt);
+    const res = await fetch(
+      `${BASE_URL}/coins/${coinId}/market_chart?vs_currency=${vsCurrency}&days=${days}`,
+    );
+    if (res.status === 429) continue;
+    if (!res.ok) throw new Error(`CoinGecko error: ${res.status}`);
+    const data = await res.json();
+    return (data.prices || []).map(([ts, price]: [number, number]) => ({ timestamp: ts, price }));
+  }
+  throw new Error('Rate limited — please wait a moment and try again');
 };
 
 /** Popular coins for quick-add */

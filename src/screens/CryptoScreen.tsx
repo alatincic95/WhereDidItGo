@@ -29,10 +29,14 @@ import {
   POPULAR_COINS,
   CoinSearchResult,
   fetchTopCoins,
+  fetchCoinChart,
   getVsCurrency,
   CoinMarketData,
 } from '../utils/cryptoApi';
+import { Dimensions } from 'react-native';
 import { CryptoHolding } from '../store/slices/cryptoSlice';
+
+const SCREEN_WIDTH = Dimensions.get('window').width;
 
 // ── Sparkline Chart ────────────────────────────────────────────────
 
@@ -129,6 +133,131 @@ const AllocationBar: React.FC<{
   );
 });
 
+// ── Line Chart ─────────────────────────────────────────────────────
+
+const CHART_HEIGHT = 180;
+const CHART_PADDING = 40; // left padding for Y axis labels
+const TIME_RANGES = [
+  { label: '24H', days: 1 },
+  { label: '7D', days: 7 },
+  { label: '1M', days: 30 },
+  { label: '3M', days: 90 },
+  { label: '1Y', days: 365 },
+] as const;
+
+const LineChart: React.FC<{
+  data: { timestamp: number; price: number }[];
+  width: number;
+  height: number;
+  colors: any;
+  formatCurrency: (n: number) => string;
+}> = React.memo(({ data, width, height, colors, formatCurrency }) => {
+  if (!data || data.length < 2) return null;
+
+  const chartWidth = width - CHART_PADDING - SPACING.md;
+  const prices = data.map((d) => d.price);
+  const min = Math.min(...prices);
+  const max = Math.max(...prices);
+  const range = max - min || 1;
+  const isPositive = prices[prices.length - 1] >= prices[0];
+  const lineColor = isPositive ? colors.success : colors.danger;
+
+  // Sample to ~120 points max for performance
+  const maxPoints = 120;
+  const step = Math.max(1, Math.floor(data.length / maxPoints));
+  const sampled: { x: number; y: number }[] = [];
+  for (let i = 0; i < data.length; i += step) {
+    sampled.push({
+      x: (i / (data.length - 1)) * chartWidth,
+      y: height - ((prices[i] - min) / range) * (height - 20),
+    });
+  }
+  // Ensure last point is included
+  if (sampled.length > 0 && sampled[sampled.length - 1].x < chartWidth) {
+    sampled.push({
+      x: chartWidth,
+      y: height - ((prices[prices.length - 1] - min) / range) * (height - 20),
+    });
+  }
+
+  // Y axis labels
+  const yLabels = [max, (max + min) / 2, min];
+
+  return (
+    <View style={{ height, marginTop: SPACING.sm }}>
+      {/* Y-axis labels */}
+      {yLabels.map((val, i) => {
+        const yPos = ((max - val) / range) * (height - 20);
+        return (
+          <View key={i} style={{ position: 'absolute', top: yPos - 6, left: 0 }}>
+            <Text style={{ fontSize: 9, color: colors.textMuted, fontWeight: '600' }}>
+              {val >= 1000 ? `${(val / 1000).toFixed(1)}k` : val.toFixed(val < 1 ? 4 : 2)}
+            </Text>
+          </View>
+        );
+      })}
+      {/* Grid lines */}
+      {yLabels.map((val, i) => {
+        const yPos = ((max - val) / range) * (height - 20);
+        return (
+          <View
+            key={`grid-${i}`}
+            style={{
+              position: 'absolute',
+              top: yPos,
+              left: CHART_PADDING,
+              width: chartWidth,
+              height: 1,
+              backgroundColor: `${colors.textMuted}15`,
+            }}
+          />
+        );
+      })}
+      {/* Line segments */}
+      <View style={{ position: 'absolute', left: CHART_PADDING, top: 0, width: chartWidth, height }}>
+        {sampled.map((point, i) => {
+          if (i === 0) return null;
+          const prev = sampled[i - 1];
+          const dx = point.x - prev.x;
+          const dy = point.y - prev.y;
+          const length = Math.sqrt(dx * dx + dy * dy);
+          const angle = Math.atan2(dy, dx) * (180 / Math.PI);
+          return (
+            <View
+              key={i}
+              style={{
+                position: 'absolute',
+                left: prev.x,
+                top: prev.y,
+                width: length,
+                height: 2,
+                backgroundColor: lineColor,
+                borderRadius: 1,
+                transform: [{ rotate: `${angle}deg` }],
+                transformOrigin: 'left center',
+              }}
+            />
+          );
+        })}
+        {/* Current price dot */}
+        {sampled.length > 0 && (
+          <View
+            style={{
+              position: 'absolute',
+              left: sampled[sampled.length - 1].x - 4,
+              top: sampled[sampled.length - 1].y - 4,
+              width: 8,
+              height: 8,
+              borderRadius: 4,
+              backgroundColor: lineColor,
+            }}
+          />
+        )}
+      </View>
+    </View>
+  );
+});
+
 export const CryptoScreen: React.FC = () => {
   const { colors, isDark } = useTheme();
   const navigation = useNavigation<any>();
@@ -154,6 +283,12 @@ export const CryptoScreen: React.FC = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // Chart state
+  const [showChart, setShowChart] = useState(false);
+  const [chartDays, setChartDays] = useState(7);
+  const [chartData, setChartData] = useState<{ timestamp: number; price: number }[]>([]);
+  const [chartLoading, setChartLoading] = useState(false);
 
   // Market data
   const [topCoins, setTopCoins] = useState<CoinMarketData[]>([]);
@@ -189,6 +324,96 @@ export const CryptoScreen: React.FC = () => {
     setLoading(false);
   };
 
+  const buildSparklineChart = () => {
+    // Build 7D chart from cached sparkline data (no API call needed)
+    const holdingsWithSparkline = cryptoHoldings.filter(
+      (h) => cryptoPrices[h.coinId]?.sparkline && cryptoPrices[h.coinId].sparkline!.length > 0
+    );
+    if (holdingsWithSparkline.length === 0) return [];
+
+    const baseSparkline = cryptoPrices[holdingsWithSparkline[0].coinId].sparkline!;
+    const len = baseSparkline.length;
+    const now = Date.now();
+    const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
+
+    return Array.from({ length: len }, (_, i) => {
+      let totalValue = 0;
+      cryptoHoldings.forEach((h) => {
+        const sparkline = cryptoPrices[h.coinId]?.sparkline;
+        if (sparkline && sparkline.length > 0) {
+          const price = sparkline[Math.min(i, sparkline.length - 1)];
+          totalValue += h.amount * price;
+        }
+      });
+      return {
+        timestamp: now - sevenDaysMs + (i / (len - 1)) * sevenDaysMs,
+        price: totalValue,
+      };
+    });
+  };
+
+  const loadChart = async (days: number) => {
+    if (cryptoHoldings.length === 0) return;
+    setChartDays(days);
+    setError('');
+
+    // For 7D, use cached sparkline data (already fetched, no extra API call)
+    if (days === 7) {
+      const data = buildSparklineChart();
+      if (data.length > 0) {
+        setChartData(data);
+        return;
+      }
+    }
+
+    setChartLoading(true);
+    try {
+      const vs = getVsCurrency(currencySymbol);
+      // Fetch chart data sequentially with delay to avoid rate limits
+      const allCharts: { timestamp: number; price: number }[][] = [];
+      for (let i = 0; i < cryptoHoldings.length; i++) {
+        if (i > 0) await new Promise((r) => setTimeout(r, 1500));
+        const chart = await fetchCoinChart(cryptoHoldings[i].coinId, vs, days);
+        allCharts.push(chart);
+      }
+      // Build a combined portfolio value timeline
+      if (allCharts.length > 0 && allCharts[0].length > 0) {
+        const baseTimestamps = allCharts[0];
+        const combined = baseTimestamps.map((point, i) => {
+          let totalValue = 0;
+          cryptoHoldings.forEach((h, hIdx) => {
+            const chart = allCharts[hIdx];
+            const dataPoint = chart[Math.min(i, chart.length - 1)];
+            totalValue += h.amount * (dataPoint?.price || 0);
+          });
+          return { timestamp: point.timestamp, price: totalValue };
+        });
+        setChartData(combined);
+      }
+    } catch (e: any) {
+      // If API fails, try falling back to sparkline for 7D-ish view
+      if (days <= 7) {
+        const fallback = buildSparklineChart();
+        if (fallback.length > 0) {
+          setChartData(fallback);
+          setChartLoading(false);
+          return;
+        }
+      }
+      setError(e?.message || 'Failed to load chart data');
+    }
+    setChartLoading(false);
+  };
+
+  const handleToggleChart = () => {
+    if (!showChart) {
+      setShowChart(true);
+      loadChart(chartDays);
+    } else {
+      setShowChart(false);
+    }
+  };
+
   const portfolioValue = getCryptoPortfolioValue();
 
   const lastFetchedLabel = cryptoLastFetched
@@ -203,9 +428,20 @@ export const CryptoScreen: React.FC = () => {
           <MaterialIcons name="arrow-back" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Crypto Portfolio</Text>
-        <TouchableOpacity onPress={() => setShowAddModal(true)} style={styles.headerBtn}>
-          <MaterialIcons name="add" size={24} color={colors.primary} />
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row', gap: SPACING.sm }}>
+          {cryptoHoldings.length > 0 && (
+            <TouchableOpacity onPress={handleToggleChart} style={styles.headerBtn}>
+              <MaterialIcons
+                name={showChart ? 'show-chart' : 'show-chart'}
+                size={24}
+                color={showChart ? colors.primary : colors.textMuted}
+              />
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity onPress={() => setShowAddModal(true)} style={styles.headerBtn}>
+            <MaterialIcons name="add" size={24} color={colors.primary} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ScrollView
@@ -240,6 +476,63 @@ export const CryptoScreen: React.FC = () => {
             </Text>
           </TouchableOpacity>
         </LinearGradient>
+
+        {/* Portfolio Chart */}
+        {showChart && cryptoHoldings.length > 0 && (
+          <View style={[styles.chartCard, { backgroundColor: colors.backgroundCard, borderColor: colors.border }]}>
+            <View style={styles.chartHeader}>
+              <Text style={[styles.chartTitle, { color: colors.textPrimary }]}>Portfolio Value</Text>
+              {chartData.length > 1 && (
+                <Text style={{
+                  fontSize: FONT_SIZE.xs,
+                  fontWeight: '600',
+                  color: chartData[chartData.length - 1].price >= chartData[0].price ? colors.success : colors.danger,
+                }}>
+                  {((chartData[chartData.length - 1].price - chartData[0].price) / chartData[0].price * 100).toFixed(2)}%
+                </Text>
+              )}
+            </View>
+            {/* Time range selector */}
+            <View style={styles.timeRangeRow}>
+              {TIME_RANGES.map((r) => (
+                <TouchableOpacity
+                  key={r.label}
+                  style={[
+                    styles.timeRangeBtn,
+                    { borderColor: colors.border },
+                    chartDays === r.days && { backgroundColor: colors.primary, borderColor: colors.primary },
+                  ]}
+                  onPress={() => loadChart(r.days)}
+                >
+                  <Text style={[
+                    styles.timeRangeText,
+                    { color: colors.textMuted },
+                    chartDays === r.days && { color: '#FFF' },
+                  ]}>
+                    {r.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            {chartLoading ? (
+              <View style={{ height: CHART_HEIGHT, justifyContent: 'center', alignItems: 'center' }}>
+                <ActivityIndicator color={colors.primary} />
+              </View>
+            ) : chartData.length > 1 ? (
+              <LineChart
+                data={chartData}
+                width={SCREEN_WIDTH - SPACING.md * 4}
+                height={CHART_HEIGHT}
+                colors={colors}
+                formatCurrency={formatCurrency}
+              />
+            ) : (
+              <View style={{ height: CHART_HEIGHT, justifyContent: 'center', alignItems: 'center' }}>
+                <Text style={{ color: colors.textMuted, fontSize: FONT_SIZE.sm }}>No chart data</Text>
+              </View>
+            )}
+          </View>
+        )}
 
         {error ? (
           <Text style={[styles.errorText, { color: colors.danger }]}>{error}</Text>
@@ -377,14 +670,6 @@ export const CryptoScreen: React.FC = () => {
                       <Text style={[styles.marketSymbol, { color: colors.textMuted }]} numberOfLines={1}>{coin.symbol.toUpperCase()}</Text>
                     </View>
                   </View>
-                  {coin.sparkline_in_7d?.price && coin.sparkline_in_7d.price.length > 0 && (
-                    <SparklineChart
-                      data={coin.sparkline_in_7d.price}
-                      width={52}
-                      height={24}
-                      color={isPositive ? colors.success : colors.danger}
-                    />
-                  )}
                   <View style={styles.holdingRight}>
                     <Text style={[styles.marketPrice, { color: colors.textPrimary }]}>
                       {formatCurrency(coin.current_price)}
@@ -777,6 +1062,36 @@ const styles = StyleSheet.create({
     borderRadius: BORDER_RADIUS.md,
   },
   includeText: { fontSize: FONT_SIZE.sm, fontWeight: '500' },
+
+  // Chart
+  chartCard: {
+    borderRadius: BORDER_RADIUS.lg,
+    borderWidth: 1,
+    padding: SPACING.md,
+    marginBottom: SPACING.lg,
+  },
+  chartHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: SPACING.sm,
+  },
+  chartTitle: { fontSize: FONT_SIZE.md, fontWeight: '700' },
+  timeRangeRow: {
+    flexDirection: 'row',
+    gap: SPACING.xs,
+    marginBottom: SPACING.sm,
+  },
+  timeRangeBtn: {
+    paddingHorizontal: SPACING.md,
+    paddingVertical: 6,
+    borderRadius: BORDER_RADIUS.round,
+    borderWidth: 1,
+  },
+  timeRangeText: {
+    fontSize: FONT_SIZE.xs,
+    fontWeight: '700',
+  },
 
   // Error
   errorText: { textAlign: 'center', marginBottom: SPACING.md, fontSize: FONT_SIZE.sm },
