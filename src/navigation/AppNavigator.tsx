@@ -24,6 +24,8 @@ import { AssistantScreen } from '../screens/AssistantScreen';
 import { IncomeListScreen } from '../screens/IncomeListScreen';
 import { GlobalSearchScreen } from '../screens/GlobalSearchScreen';
 import { BillCalendarScreen } from '../screens/BillCalendarScreen';
+import { AnnualReportScreen } from '../screens/AnnualReportScreen';
+import { AccountsScreen } from '../screens/AccountsScreen';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { useTheme } from '../contexts/ThemeContext';
 
@@ -47,7 +49,6 @@ const SafeExpenseList = withErrorBoundary(ExpenseListScreen, 'Expenses');
 const SafeIncomeList = withErrorBoundary(IncomeListScreen, 'Income');
 const SafeProjects = withErrorBoundary(ProjectsScreen, 'Budgets');
 const SafeFixedExpenses = withErrorBoundary(FixedExpensesScreen, 'Recurring');
-
 function TabNavigator() {
   const { colors, isDark } = useTheme();
   return (
@@ -146,6 +147,8 @@ const SafeDashboardCustomize = withErrorBoundary(DashboardCustomizeScreen, 'Dash
 const SafeAssistant = withErrorBoundary(AssistantScreen, 'Assistant');
 const SafeGlobalSearch = withErrorBoundary(GlobalSearchScreen, 'Search');
 const SafeBillCalendar = withErrorBoundary(BillCalendarScreen, 'Bill Calendar');
+const SafeAnnualReport = withErrorBoundary(AnnualReportScreen, 'Annual Report');
+const SafeAccounts = withErrorBoundary(AccountsScreen, 'Accounts');
 
 export function AppNavigator() {
   return (
@@ -256,6 +259,20 @@ export function AppNavigator() {
         <Stack.Screen
           name="BillCalendar"
           component={SafeBillCalendar}
+          options={{
+            animation: 'slide_from_right',
+          }}
+        />
+        <Stack.Screen
+          name="AnnualReport"
+          component={SafeAnnualReport}
+          options={{
+            animation: 'slide_from_right',
+          }}
+        />
+        <Stack.Screen
+          name="Accounts"
+          component={SafeAccounts}
           options={{
             animation: 'slide_from_right',
           }}

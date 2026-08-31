@@ -8,6 +8,8 @@ export { RecentTransactions } from './RecentTransactions';
 export { DashboardFAB } from './DashboardFAB';
 export { DashboardModals } from './DashboardModals';
 export { QuickAddBar } from './QuickAddBar';
+export { AccountAvatar } from './AccountAvatar';
+export { AccountSwitcherModal } from './AccountSwitcherModal';
 export { ExpenseTemplatesRow } from './ExpenseTemplatesRow';
 export {
   getCurrentMonth,

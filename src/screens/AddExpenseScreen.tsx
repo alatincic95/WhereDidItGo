@@ -49,6 +49,7 @@ import {
   ConvertToRecurringModal,
   NewCategoryModal,
 } from '../components/expense';
+import { AccountSelector } from '../components/AccountSelector';
 
 export const AddExpenseScreen: React.FC = () => {
   const { colors, isDark } = useTheme();
@@ -68,6 +69,7 @@ export const AddExpenseScreen: React.FC = () => {
     editingExpense?.projectId || preselectedProjectId
   );
   const [isPending, setIsPending] = useState(editingExpense?.isPending ?? false);
+  const [selectedAccountId, setSelectedAccountId] = useState<string | undefined>(editingExpense?.accountId);
   const [expenseCurrency, setExpenseCurrency] = useState<string | undefined>(editingExpense?.currency);
   const [receiptUri, setReceiptUri] = useState<string | undefined>(editingExpense?.receiptUri);
   const [showReceiptFull, setShowReceiptFull] = useState(false);
@@ -204,6 +206,7 @@ export const AddExpenseScreen: React.FC = () => {
       receiptUri,
       tags: tags.length > 0 ? tags : undefined,
       splits: splits.length > 0 ? splits : undefined,
+      accountId: selectedAccountId,
     };
 
     if (editingExpense) {
@@ -380,6 +383,11 @@ export const AddExpenseScreen: React.FC = () => {
             slideAnim={slideAnim}
             onScanReceipt={apiKeyReady ? handleScanReceipt : undefined}
             scanning={scanning}
+          />
+
+          <AccountSelector
+            selectedAccountId={selectedAccountId}
+            onSelect={setSelectedAccountId}
           />
 
           <BudgetSelector

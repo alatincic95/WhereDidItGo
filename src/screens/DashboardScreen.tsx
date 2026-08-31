@@ -32,6 +32,8 @@ import {
   DashboardModals,
   QuickAddBar,
   ExpenseTemplatesRow,
+  AccountAvatar,
+  AccountSwitcherModal,
   getCurrentMonth,
   getCurrentMonthName,
   getGreeting,
@@ -54,6 +56,7 @@ export const DashboardScreen: React.FC = () => {
   const [newRateCurrency, setNewRateCurrency] = useState('');
   const [newRateValue, setNewRateValue] = useState('');
   const [backupMenuOpen, setBackupMenuOpen] = useState(false);
+  const [accountSwitcherOpen, setAccountSwitcherOpen] = useState(false);
   const [hamburgerOpen, setHamburgerOpen] = useState(false);
   const [restoreConfirmOpen, setRestoreConfirmOpen] = useState(false);
   const [pendingRestore, setPendingRestore] = useState<any>(null);
@@ -85,6 +88,7 @@ export const DashboardScreen: React.FC = () => {
     categoryBudgets,
     getCategoryBudgetStatus,
     dashboardCards,
+    selectedAccountId,
   } = useExpenseStore();
 
   const { getUnreadCount, generateSmartNotifications } = useNotificationStore();
@@ -92,7 +96,7 @@ export const DashboardScreen: React.FC = () => {
 
   const currentMonth = getCurrentMonth();
   const monthlyTotal = getMonthlyTotal(currentMonth);
-  const fixedTotal = getFixedExpensesTotal();
+  const fixedTotal = selectedAccountId ? 0 : getFixedExpensesTotal();
   const monthlyBalance = getMonthlyBalance(currentMonth);
   const overallBalance = getOverallBalance();
   const totalAllTime = getTotalExpensesAllTime();
@@ -104,8 +108,12 @@ export const DashboardScreen: React.FC = () => {
   const allTimeCategoryTotals = getAllTimeCategoryTotals();
 
   const fixedIncomeTotal = getFixedIncomesTotal();
-  const totalSpentThisMonth = monthlyTotal + fixedTotal;
-  const totalIncomeThisMonth = monthlyIncome + fixedIncomeTotal + extraIncome;
+  const totalSpentThisMonth = selectedAccountId
+    ? monthlyTotal
+    : monthlyTotal + fixedTotal;
+  const totalIncomeThisMonth = selectedAccountId
+    ? extraIncome
+    : monthlyIncome + fixedIncomeTotal + extraIncome;
   const spendingPercentage = totalIncomeThisMonth > 0 ? totalSpentThisMonth / totalIncomeThisMonth : 0;
 
   const categoryBudgetStatuses = getCategoryBudgetStatus(currentMonth);
@@ -207,6 +215,7 @@ export const DashboardScreen: React.FC = () => {
         <Animated.View
           style={[styles.header, { paddingTop: insets.top + 16, opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}
         >
+          <AccountAvatar onPress={() => setAccountSwitcherOpen(true)} />
           <View style={{ flex: 1 }}>
             <Text style={[styles.greeting, { color: colors.textMuted }]}>Good {getGreeting()}</Text>
             <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Your Finances</Text>
@@ -442,6 +451,12 @@ export const DashboardScreen: React.FC = () => {
         restoreMessage={restoreMessage}
         setRestoreMessage={setRestoreMessage}
         navigation={navigation}
+      />
+
+      {/* Account Switcher */}
+      <AccountSwitcherModal
+        visible={accountSwitcherOpen}
+        onClose={() => setAccountSwitcherOpen(false)}
       />
     </View>
   );

@@ -18,21 +18,10 @@ export const GlassCard: React.FC<GlassCardProps> = ({
 }) => {
   const { colors, isDark } = useTheme();
   const color = glowColor || colors.primary;
-  const glowOpacity = intensity === 'high' ? 0.3 : intensity === 'medium' ? 0.15 : 0.08;
+  const glowOpacity = intensity === 'high' ? 0.12 : intensity === 'medium' ? 0.06 : 0.03;
 
   return (
     <View style={[styles.container, style]}>
-      {isDark && (
-        <View
-          style={[
-            styles.glow,
-            {
-              backgroundColor: color,
-              opacity: glowOpacity,
-            },
-          ]}
-        />
-      )}
       <View style={[
         styles.glass,
         {
@@ -40,10 +29,6 @@ export const GlassCard: React.FC<GlassCardProps> = ({
           borderColor: isDark ? 'rgba(108, 99, 255, 0.15)' : colors.border,
         },
       ]}>
-        <View style={[
-          styles.innerBorder,
-          { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(108, 99, 255, 0.05)' },
-        ]} />
         {children}
       </View>
     </View>
@@ -56,12 +41,11 @@ const styles = StyleSheet.create({
   },
   glow: {
     position: 'absolute',
-    top: -8,
-    left: -8,
-    right: -8,
-    bottom: -8,
+    top: -3,
+    left: -3,
+    right: -3,
+    bottom: -3,
     borderRadius: BORDER_RADIUS.xl,
-    transform: [{ scale: 1.02 }],
   },
   glass: {
     borderRadius: BORDER_RADIUS.lg,

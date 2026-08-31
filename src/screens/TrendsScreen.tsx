@@ -136,7 +136,13 @@ export const TrendsScreen: React.FC = () => {
           <MaterialIcons name="arrow-back" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Trends</Text>
-        <View style={{ width: 40 }} />
+        <TouchableOpacity
+          style={[styles.backBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
+          onPress={() => navigation.navigate('AnnualReport')}
+          accessibilityLabel="Annual report"
+        >
+          <MaterialIcons name="summarize" size={22} color={colors.primary} />
+        </TouchableOpacity>
       </View>
 
       <Animated.ScrollView

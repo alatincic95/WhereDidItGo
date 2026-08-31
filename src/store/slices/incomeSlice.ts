@@ -88,8 +88,15 @@ export const createIncomeSlice: StateCreator<StoreState, [], [], IncomeSlice> = 
   },
 
   getMonthlyIncomes: (month) => {
-    const { incomes } = get();
-    return incomes.filter((i) => i.date.substring(0, 7) === month);
+    const { incomes, selectedAccountId, accounts } = get();
+    let filtered = incomes.filter((i) => i.date.substring(0, 7) === month);
+    if (selectedAccountId) {
+      const isDefault = accounts.find((a) => a.id === selectedAccountId)?.isDefault;
+      filtered = filtered.filter((i) =>
+        i.accountId === selectedAccountId || (isDefault && !i.accountId)
+      );
+    }
+    return filtered;
   },
 
   getMonthlyExtraIncome: (month) => {
@@ -98,7 +105,13 @@ export const createIncomeSlice: StateCreator<StoreState, [], [], IncomeSlice> = 
   },
 
   getTotalExtraIncomeAllTime: () => {
-    const { incomes } = get();
-    return incomes.reduce((sum, i) => sum + i.amount, 0);
+    const { incomes, selectedAccountId, accounts } = get();
+    if (!selectedAccountId) {
+      return incomes.reduce((sum, i) => sum + i.amount, 0);
+    }
+    const isDefault = accounts.find((a) => a.id === selectedAccountId)?.isDefault;
+    return incomes.filter((i) =>
+      i.accountId === selectedAccountId || (isDefault && !i.accountId)
+    ).reduce((sum, i) => sum + i.amount, 0);
   },
 });

@@ -9,10 +9,12 @@ import { ThemeProvider, useTheme } from './src/contexts/ThemeContext';
 import { useExpenseStore } from './src/store/useExpenseStore';
 import { OnboardingScreen } from './src/screens/OnboardingScreen';
 import { UndoSnackbar } from './src/components/UndoSnackbar';
+import { KeyboardOverlay } from './src/components/KeyboardOverlay';
 import { ErrorBoundary } from './src/components/ErrorBoundary';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { scheduleBillReminders, scheduleMonthlyRecap, scheduleBackupReminder } from './src/utils/localNotifications';
+import { scheduleBillReminders, scheduleMonthlyRecap, scheduleBackupReminder, scheduleDueDateReminders } from './src/utils/localNotifications';
 import { buildWidgetData, syncWidgetData } from './src/utils/widgetData';
+import { performAutoBackup, rotateBackups, shouldAutoBackup } from './src/utils/autoBackup';
 
 const LOCK_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
 
@@ -116,7 +118,12 @@ function AppContent() {
   const autoBackupReminder = useExpenseStore((s) => s.autoBackupReminder);
   const lastBackupDate = useExpenseStore((s) => s.lastBackupDate);
   const fixedExpenses = useExpenseStore((s) => s.fixedExpenses);
+  const fixedIncomes = useExpenseStore((s) => s.fixedIncomes);
   const currencySymbol = useExpenseStore((s) => s.currencySymbol);
+  const autoBackupEnabled = useExpenseStore((s) => s.autoBackupEnabled);
+  const autoBackupFrequency = useExpenseStore((s) => s.autoBackupFrequency);
+  const autoBackupMaxCount = useExpenseStore((s) => s.autoBackupMaxCount);
+  const reminderLeadDays = useExpenseStore((s) => s.reminderLeadDays);
 
   useEffect(() => {
     processAutoContributions();
@@ -125,9 +132,17 @@ function AppContent() {
     if (pushNotificationsEnabled) {
       scheduleBillReminders(fixedExpenses, currencySymbol);
       scheduleMonthlyRecap();
+      scheduleDueDateReminders(fixedExpenses, fixedIncomes, reminderLeadDays, currencySymbol);
       if (autoBackupReminder) {
         scheduleBackupReminder(lastBackupDate);
       }
+    }
+    // Auto-backup on launch if needed
+    if (shouldAutoBackup(autoBackupEnabled, autoBackupFrequency, lastBackupDate, 0)) {
+      const store = useExpenseStore.getState();
+      performAutoBackup(store.getBackupState).then((ok) => {
+        if (ok) rotateBackups(autoBackupMaxCount);
+      });
     }
     // Sync widget data for home screen widgets (native builds)
     const store = useExpenseStore.getState();
@@ -136,13 +151,14 @@ function AppContent() {
   }, []);
 
   return (
-    <View style={{ flex: 1 }} onStartShouldSetResponder={() => { Keyboard.dismiss(); return false; }}>
+    <View style={{ flex: 1 }}>
       <StatusBar style={isDark ? 'light' : 'dark'} />
       <BiometricGate>
         <OnboardingGate>
           <AppNavigator />
         </OnboardingGate>
       </BiometricGate>
+      <KeyboardOverlay />
       <UndoSnackbar />
     </View>
   );

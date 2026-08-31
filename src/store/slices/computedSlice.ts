@@ -1,5 +1,6 @@
 import { StateCreator } from 'zustand';
-import { Expense, FixedExpense, FixedIncome, Income, Budget, CustomCategory, ExchangeRate, SavingsGoal, BudgetTemplate, CategoryBudget, DashboardCardConfig, DEFAULT_DASHBOARD_CARDS, IncomeSource, YoYMonthData } from '../../types';
+import { Expense, FixedExpense, FixedIncome, Income, Budget, CustomCategory, ExchangeRate, SavingsGoal, BudgetTemplate, CategoryBudget, DashboardCardConfig, DEFAULT_DASHBOARD_CARDS, IncomeSource, YoYMonthData, Account, Transfer } from '../../types';
+import { DEFAULT_ACCOUNT } from './accountSlice';
 import { StoreState } from '../useExpenseStore';
 import { computeDueDates, generateRecurringId } from '../../utils/recurringProcessor';
 
@@ -23,6 +24,8 @@ export interface ComputedSlice {
     budgetTemplates: BudgetTemplate[];
     categoryBudgets?: CategoryBudget[];
     dashboardCards?: DashboardCardConfig[];
+    accounts?: Account[];
+    transfers?: Transfer[];
     initialBalance: number;
     monthlyIncome: number;
     currencySymbol: string;
@@ -39,6 +42,8 @@ export interface ComputedSlice {
     budgetTemplates: BudgetTemplate[];
     categoryBudgets: CategoryBudget[];
     dashboardCards: DashboardCardConfig[];
+    accounts: Account[];
+    transfers: Transfer[];
     initialBalance: number;
     monthlyIncome: number;
     currencySymbol: string;
@@ -47,27 +52,26 @@ export interface ComputedSlice {
 
 export const createComputedSlice: StateCreator<StoreState, [], [], ComputedSlice> = (set, get) => ({
   getMonthlyBalance: (month) => {
-    const { monthlyIncome } = get();
+    const { monthlyIncome, useRecurringAsMonthlyIncome, selectedAccountId } = get();
     const monthlyTotal = get().getMonthlyTotal(month);
+    const extraIncome = get().getMonthlyExtraIncome(month);
+    if (selectedAccountId) {
+      // Per-account: only that account's transactions
+      return extraIncome - monthlyTotal;
+    }
+    const baseIncome = useRecurringAsMonthlyIncome ? 0 : monthlyIncome;
     const fixedTotal = get().getFixedExpensesTotal();
     const fixedIncomeTotal = get().getFixedIncomesTotal();
-    const extraIncome = get().getMonthlyExtraIncome(month);
-    return monthlyIncome + fixedIncomeTotal + extraIncome - monthlyTotal - fixedTotal;
+    return baseIncome + fixedIncomeTotal + extraIncome - monthlyTotal - fixedTotal;
   },
 
   getOverallBalance: () => {
-    const { initialBalance, monthlyIncome } = get();
-    const months = get().getTrackedMonths();
-    const fixedTotal = get().getFixedExpensesTotal();
-    const fixedIncomeTotal = get().getFixedIncomesTotal();
-
-    let total = initialBalance;
-    months.forEach((month) => {
-      const monthExpenses = get().getMonthlyTotal(month);
-      const extraIncome = get().getMonthlyExtraIncome(month);
-      total += monthlyIncome + fixedIncomeTotal + extraIncome - monthExpenses - fixedTotal;
-    });
-    return total;
+    const { selectedAccountId, accounts } = get();
+    if (selectedAccountId) {
+      return get().getAccountBalance(selectedAccountId);
+    }
+    // "All Accounts": sum of all individual account balances
+    return accounts.reduce((sum, a) => sum + get().getAccountBalance(a.id), 0);
   },
 
   getTrackedMonths: () => {
@@ -86,13 +90,14 @@ export const createComputedSlice: StateCreator<StoreState, [], [], ComputedSlice
 
   getMonthlyTotalsHistory: () => {
     const months = get().getTrackedMonths();
-    const { monthlyIncome } = get();
-    const fixedTotal = get().getFixedExpensesTotal();
-    const fixedIncomeTotal = get().getFixedIncomesTotal();
+    const { monthlyIncome, useRecurringAsMonthlyIncome, selectedAccountId } = get();
+    const baseIncome = useRecurringAsMonthlyIncome ? 0 : monthlyIncome;
+    const fixedTotal = selectedAccountId ? 0 : get().getFixedExpensesTotal();
+    const fixedIncomeTotal = selectedAccountId ? 0 : get().getFixedIncomesTotal();
     return months.map((month) => {
       const expenses = get().getMonthlyTotal(month) + fixedTotal;
       const extraIncome = get().getMonthlyExtraIncome(month);
-      const income = monthlyIncome + fixedIncomeTotal + extraIncome;
+      const income = (selectedAccountId ? 0 : baseIncome) + fixedIncomeTotal + extraIncome;
       return { month, expenses, income };
     });
   },
@@ -220,6 +225,8 @@ export const createComputedSlice: StateCreator<StoreState, [], [], ComputedSlice
       budgetTemplates: data.budgetTemplates || [],
       categoryBudgets: data.categoryBudgets || [],
       dashboardCards: data.dashboardCards || DEFAULT_DASHBOARD_CARDS,
+      accounts: data.accounts && data.accounts.length > 0 ? data.accounts : [DEFAULT_ACCOUNT],
+      transfers: data.transfers || [],
       initialBalance: data.initialBalance ?? 0,
       monthlyIncome: data.monthlyIncome ?? 0,
       currencySymbol: data.currencySymbol || '$',
@@ -239,6 +246,8 @@ export const createComputedSlice: StateCreator<StoreState, [], [], ComputedSlice
       budgetTemplates: s.budgetTemplates,
       categoryBudgets: s.categoryBudgets,
       dashboardCards: s.dashboardCards,
+      accounts: s.accounts,
+      transfers: s.transfers,
       initialBalance: s.initialBalance,
       monthlyIncome: s.monthlyIncome,
       currencySymbol: s.currencySymbol,

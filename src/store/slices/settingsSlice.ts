@@ -1,5 +1,6 @@
 import { StateCreator } from 'zustand';
 import { ExchangeRate, CustomCategory, CategoryBudget, DashboardCardConfig, DEFAULT_DASHBOARD_CARDS, EXPENSE_CATEGORIES, FREQUENCY_TO_MONTHLY } from '../../types';
+import { DEFAULT_ACCOUNT } from './accountSlice';
 import { ThemeMode } from '../../constants/theme';
 import { StoreState } from '../useExpenseStore';
 
@@ -13,6 +14,11 @@ export interface SettingsSlice {
   onboardingCompleted: boolean;
   autoBackupReminder: boolean;
   lastBackupDate: string | null;
+  useRecurringAsMonthlyIncome: boolean;
+  reminderLeadDays: number;
+  autoBackupEnabled: boolean;
+  autoBackupFrequency: 'daily' | 'every5' | 'every10' | 'every20';
+  autoBackupMaxCount: number;
   exchangeRates: ExchangeRate[];
   customCategories: CustomCategory[];
   categoryOrder: string[];
@@ -63,6 +69,11 @@ export interface SettingsSlice {
   setOnboardingCompleted: (completed: boolean) => void;
   setAutoBackupReminder: (enabled: boolean) => void;
   setLastBackupDate: (date: string) => void;
+  setUseRecurringAsMonthlyIncome: (enabled: boolean) => void;
+  setReminderLeadDays: (days: number) => void;
+  setAutoBackupEnabled: (enabled: boolean) => void;
+  setAutoBackupFrequency: (frequency: 'daily' | 'every5' | 'every10' | 'every20') => void;
+  setAutoBackupMaxCount: (count: number) => void;
   resetAllData: () => Promise<void>;
 }
 
@@ -76,6 +87,11 @@ export const createSettingsSlice: StateCreator<StoreState, [], [], SettingsSlice
   onboardingCompleted: false,
   autoBackupReminder: false,
   lastBackupDate: null,
+  useRecurringAsMonthlyIncome: false,
+  reminderLeadDays: 3,
+  autoBackupEnabled: false,
+  autoBackupFrequency: 'daily' as const,
+  autoBackupMaxCount: 5,
   exchangeRates: [],
   customCategories: [],
   categoryOrder: [],
@@ -261,6 +277,11 @@ export const createSettingsSlice: StateCreator<StoreState, [], [], SettingsSlice
   setOnboardingCompleted: (completed) => set({ onboardingCompleted: completed }),
   setAutoBackupReminder: (enabled) => set({ autoBackupReminder: enabled }),
   setLastBackupDate: (date) => set({ lastBackupDate: date }),
+  setUseRecurringAsMonthlyIncome: (enabled) => set({ useRecurringAsMonthlyIncome: enabled }),
+  setReminderLeadDays: (days) => set({ reminderLeadDays: days }),
+  setAutoBackupEnabled: (enabled) => set({ autoBackupEnabled: enabled }),
+  setAutoBackupFrequency: (frequency) => set({ autoBackupFrequency: frequency }),
+  setAutoBackupMaxCount: (count) => set({ autoBackupMaxCount: count }),
   resetAllData: async () => {
     const AsyncStorage = require('@react-native-async-storage/async-storage').default;
     await AsyncStorage.clear();
@@ -287,6 +308,13 @@ export const createSettingsSlice: StateCreator<StoreState, [], [], SettingsSlice
       onboardingCompleted: false,
       autoBackupReminder: false,
       lastBackupDate: null,
+      useRecurringAsMonthlyIncome: false,
+      reminderLeadDays: 3,
+      autoBackupEnabled: false,
+      autoBackupFrequency: 'daily' as const,
+      autoBackupMaxCount: 5,
+      accounts: [DEFAULT_ACCOUNT],
+      transfers: [],
     });
   },
 });

@@ -36,6 +36,7 @@ import {
 import { useUndoStore } from '../store/useUndoStore';
 import { hapticSuccess, hapticError, hapticWarning } from '../utils/haptics';
 import { CalendarPicker } from '../components/CalendarPicker';
+import { AccountSelector } from '../components/AccountSelector';
 
 export const AddIncomeScreen: React.FC = () => {
   const { colors, isDark } = useTheme();
@@ -79,6 +80,7 @@ export const AddIncomeScreen: React.FC = () => {
     editingIncome?.date ? new Date(editingIncome.date) : new Date()
   );
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [selectedAccountId, setSelectedAccountId] = useState<string | undefined>(editingIncome?.accountId);
 
   // Animations
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -133,6 +135,7 @@ export const AddIncomeScreen: React.FC = () => {
       source: source as IncomeSource,
       description,
       date: date.toISOString(),
+      accountId: selectedAccountId,
     };
 
     if (editingIncome) {
@@ -269,6 +272,12 @@ export const AddIncomeScreen: React.FC = () => {
               })}
             </View>
           </Animated.View>
+
+          {/* Account */}
+          <AccountSelector
+            selectedAccountId={selectedAccountId}
+            onSelect={setSelectedAccountId}
+          />
 
           {/* Description */}
           <Animated.View

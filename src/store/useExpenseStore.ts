@@ -9,13 +9,15 @@ import { BudgetSlice, createBudgetSlice } from './slices/budgetSlice';
 import { SavingsSlice, createSavingsSlice } from './slices/savingsSlice';
 import { SettingsSlice, createSettingsSlice } from './slices/settingsSlice';
 import { ComputedSlice, createComputedSlice } from './slices/computedSlice';
+import { AccountSlice, createAccountSlice } from './slices/accountSlice';
 
 export type StoreState = ExpenseSlice &
   IncomeSlice &
   BudgetSlice &
   SavingsSlice &
   SettingsSlice &
-  ComputedSlice;
+  ComputedSlice &
+  AccountSlice;
 
 export const useExpenseStore = create<StoreState>()(
   persist(
@@ -26,6 +28,7 @@ export const useExpenseStore = create<StoreState>()(
       ...createSavingsSlice(set, get, api),
       ...createSettingsSlice(set, get, api),
       ...createComputedSlice(set, get, api),
+      ...createAccountSlice(set, get, api),
     }),
     {
       name: 'expense-store',
@@ -51,16 +54,49 @@ export const useExpenseStore = create<StoreState>()(
         biometricEnabled: state.biometricEnabled,
         pushNotificationsEnabled: state.pushNotificationsEnabled,
         onboardingCompleted: state.onboardingCompleted,
+        accounts: state.accounts,
+        transfers: state.transfers,
+        useRecurringAsMonthlyIncome: state.useRecurringAsMonthlyIncome,
+        reminderLeadDays: state.reminderLeadDays,
+        autoBackupEnabled: state.autoBackupEnabled,
+        autoBackupFrequency: state.autoBackupFrequency,
+        autoBackupMaxCount: state.autoBackupMaxCount,
       }),
-      // Migrate old 'projects' key to 'budgets'
       migrate: (persistedState: any, version: number) => {
+        // v0 → v1: rename projects to budgets
         if (persistedState.projects && !persistedState.budgets) {
           persistedState.budgets = persistedState.projects;
           delete persistedState.projects;
         }
+        // v1 → v2: new features defaults
+        if (version < 2) {
+          if (persistedState.useRecurringAsMonthlyIncome === undefined)
+            persistedState.useRecurringAsMonthlyIncome = false;
+          if (persistedState.reminderLeadDays === undefined)
+            persistedState.reminderLeadDays = 3;
+          if (persistedState.autoBackupEnabled === undefined)
+            persistedState.autoBackupEnabled = false;
+          if (!persistedState.autoBackupFrequency)
+            persistedState.autoBackupFrequency = 'daily';
+          if (!persistedState.autoBackupMaxCount)
+            persistedState.autoBackupMaxCount = 5;
+          if (!persistedState.accounts) {
+            persistedState.accounts = [{
+              id: 'default-account',
+              name: 'Default',
+              type: 'bank',
+              balance: persistedState.initialBalance || 0,
+              color: '#6C63FF',
+              icon: 'account-balance',
+              isDefault: true,
+              createdAt: new Date().toISOString(),
+            }];
+          }
+          if (!persistedState.transfers) persistedState.transfers = [];
+        }
         return persistedState;
       },
-      version: 1,
+      version: 2,
     }
   )
 );

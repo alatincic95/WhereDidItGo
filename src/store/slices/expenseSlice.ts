@@ -214,8 +214,15 @@ export const createExpenseSlice: StateCreator<StoreState, [], [], ExpenseSlice> 
   },
 
   getMonthlyExpenses: (month) => {
-    const { expenses } = get();
-    return expenses.filter((e) => e.date.substring(0, 7) === month);
+    const { expenses, selectedAccountId, accounts } = get();
+    let filtered = expenses.filter((e) => e.date.substring(0, 7) === month);
+    if (selectedAccountId) {
+      const isDefault = accounts.find((a) => a.id === selectedAccountId)?.isDefault;
+      filtered = filtered.filter((e) =>
+        e.accountId === selectedAccountId || (isDefault && !e.accountId)
+      );
+    }
+    return filtered;
   },
 
   getMonthlyTotal: (month) => {
@@ -253,11 +260,14 @@ export const createExpenseSlice: StateCreator<StoreState, [], [], ExpenseSlice> 
   },
 
   getAllTimeCategoryTotals: () => {
-    const { expenses, fixedExpenses } = get();
+    const { expenses, fixedExpenses, selectedAccountId, accounts } = get();
     const months = get().getTrackedMonths();
     const convert = get().convertToBase;
     const totals: Record<string, number> = {};
-    expenses.filter((e) => !e.isFixed).forEach((e) => {
+    const isDefaultSelected = selectedAccountId ? accounts.find((a) => a.id === selectedAccountId)?.isDefault : false;
+    const matchAccount = (e: { accountId?: string }) =>
+      !selectedAccountId || e.accountId === selectedAccountId || (isDefaultSelected && !e.accountId);
+    expenses.filter((e) => !e.isFixed && matchAccount(e)).forEach((e) => {
       if (e.splits && e.splits.length > 0) {
         e.splits.forEach((s) => {
           totals[s.category] = (totals[s.category] || 0) + convert(s.amount, e.currency);
@@ -273,8 +283,13 @@ export const createExpenseSlice: StateCreator<StoreState, [], [], ExpenseSlice> 
   },
 
   getTotalExpensesAllTime: () => {
-    const { expenses } = get();
+    const { expenses, selectedAccountId, accounts } = get();
     const convert = get().convertToBase;
-    return expenses.filter((e) => !e.isFixed).reduce((sum, e) => sum + convert(e.amount, e.currency), 0);
+    const isDefaultSelected = selectedAccountId ? accounts.find((a) => a.id === selectedAccountId)?.isDefault : false;
+    return expenses.filter((e) => {
+      if (e.isFixed) return false;
+      if (!selectedAccountId) return true;
+      return e.accountId === selectedAccountId || (isDefaultSelected && !e.accountId);
+    }).reduce((sum, e) => sum + convert(e.amount, e.currency), 0);
   },
 });

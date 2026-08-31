@@ -43,6 +43,12 @@ import {
 } from '../types';
 import { formatCurrency } from '../utils/currency';
 
+function getOrdinalSuffix(n: number): string {
+  const s = ['th', 'st', 'nd', 'rd'];
+  const v = n % 100;
+  return s[(v - 20) % 10] || s[v] || s[0];
+}
+
 type Tab = 'expenses' | 'income';
 
 export const FixedExpensesScreen: React.FC = () => {
@@ -75,6 +81,7 @@ export const FixedExpensesScreen: React.FC = () => {
   const [source, setSource] = useState('');
   const [description, setDescription] = useState('');
   const [frequency, setFrequency] = useState<RecurringFrequency>('monthly');
+  const [dueDay, setDueDay] = useState<string>('');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [error, setError] = useState('');
   const [highlightedItemId, setHighlightedItemId] = useState<string | undefined>(highlightId);
@@ -111,12 +118,14 @@ export const FixedExpensesScreen: React.FC = () => {
       setCategory(item.category);
       setDescription(item.description);
       setFrequency(item.frequency || 'monthly');
+      setDueDay(item.dueDay ? item.dueDay.toString() : '');
     } else {
       setEditingExpense(null);
       setAmount('');
       setCategory('');
       setDescription('');
       setFrequency('monthly');
+      setDueDay('');
     }
     setModalVisible(true);
   };
@@ -130,12 +139,14 @@ export const FixedExpensesScreen: React.FC = () => {
       setSource(item.source);
       setDescription(item.description);
       setFrequency(item.frequency || 'monthly');
+      setDueDay(item.dueDay ? item.dueDay.toString() : '');
     } else {
       setEditingIncome(null);
       setAmount('');
       setSource('');
       setDescription('');
       setFrequency('monthly');
+      setDueDay('');
     }
     setModalVisible(true);
   };
@@ -146,12 +157,15 @@ export const FixedExpensesScreen: React.FC = () => {
       return;
     }
 
+    const parsedDueDay = dueDay ? parseInt(dueDay, 10) : undefined;
+    const validDueDay = parsedDueDay && parsedDueDay >= 1 && parsedDueDay <= 31 ? parsedDueDay : undefined;
+
     if (activeTab === 'expenses' || editingExpense) {
       if (!category) {
         setError('Please select a category');
         return;
       }
-      const data = { amount: parseFloat(amount), category, description, frequency };
+      const data = { amount: parseFloat(amount), category, description, frequency, dueDay: validDueDay };
       if (editingExpense) {
         updateFixedExpense(editingExpense.id, data);
       } else {
@@ -162,7 +176,7 @@ export const FixedExpensesScreen: React.FC = () => {
         setError('Please select a source');
         return;
       }
-      const data = { amount: parseFloat(amount), source, description, frequency };
+      const data = { amount: parseFloat(amount), source, description, frequency, dueDay: validDueDay };
       if (editingIncome) {
         updateFixedIncome(editingIncome.id, data);
       } else {
@@ -296,6 +310,12 @@ export const FixedExpensesScreen: React.FC = () => {
                           {FREQUENCY_OPTIONS.find((f) => f.value === (item.frequency || 'monthly'))?.label || 'Monthly'}
                         </Text>
                       </View>
+                      {item.dueDay && (
+                        <View style={[styles.listItemTag, { backgroundColor: isDark ? 'rgba(69, 183, 209, 0.12)' : 'rgba(69, 183, 209, 0.08)', borderColor: 'rgba(69, 183, 209, 0.3)' }]}>
+                          <MaterialIcons name="event" size={10} color="#45B7D1" />
+                          <Text style={[styles.listItemTagText, { color: '#45B7D1' }]}>Due: {item.dueDay}{getOrdinalSuffix(item.dueDay)}</Text>
+                        </View>
+                      )}
                       {item.paused && (
                         <View style={[styles.listItemTag, { backgroundColor: 'rgba(255, 170, 0, 0.12)', borderColor: 'rgba(255, 170, 0, 0.3)' }]}>
                           <MaterialIcons name="pause" size={10} color="#FFAA00" />
@@ -383,6 +403,12 @@ export const FixedExpensesScreen: React.FC = () => {
                           {FREQUENCY_OPTIONS.find((f) => f.value === (item.frequency || 'monthly'))?.label || 'Monthly'}
                         </Text>
                       </View>
+                      {item.dueDay && (
+                        <View style={[styles.listItemTag, { backgroundColor: isDark ? 'rgba(69, 183, 209, 0.12)' : 'rgba(69, 183, 209, 0.08)', borderColor: 'rgba(69, 183, 209, 0.3)' }]}>
+                          <MaterialIcons name="event" size={10} color="#45B7D1" />
+                          <Text style={[styles.listItemTagText, { color: '#45B7D1' }]}>Due: {item.dueDay}{getOrdinalSuffix(item.dueDay)}</Text>
+                        </View>
+                      )}
                       {item.paused && (
                         <View style={[styles.listItemTag, { backgroundColor: 'rgba(255, 170, 0, 0.12)', borderColor: 'rgba(255, 170, 0, 0.3)' }]}>
                           <MaterialIcons name="pause" size={10} color="#FFAA00" />
@@ -495,6 +521,33 @@ export const FixedExpensesScreen: React.FC = () => {
                 );
               })}
             </View>
+
+            {/* Due Day */}
+            <Text style={[styles.modalLabel, { color: colors.textMuted }]}>Due Day (Optional)</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: SPACING.sm }}>
+              <TextInput
+                style={[styles.modalInput, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.textPrimary, flex: 1, textAlign: 'center' }]}
+                value={dueDay}
+                onChangeText={(val) => {
+                  const num = val.replace(/[^0-9]/g, '');
+                  if (num === '' || (parseInt(num) >= 1 && parseInt(num) <= 31)) setDueDay(num);
+                }}
+                placeholder="Day of month (1-31)"
+                placeholderTextColor={colors.textMuted}
+                keyboardType="number-pad"
+                maxLength={2}
+              />
+              {dueDay ? (
+                <TouchableOpacity onPress={() => setDueDay('')}>
+                  <MaterialIcons name="close" size={20} color={colors.textMuted} />
+                </TouchableOpacity>
+              ) : null}
+            </View>
+            {dueDay ? (
+              <Text style={{ color: colors.textSecondary, fontSize: FONT_SIZE.xs, marginTop: 4 }}>
+                You'll be reminded before the {parseInt(dueDay)}{getOrdinalSuffix(parseInt(dueDay))} each month
+              </Text>
+            ) : null}
 
             {isEditingExpenseModal ? (
               <>

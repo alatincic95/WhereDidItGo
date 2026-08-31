@@ -1,3 +1,44 @@
+export type AccountType = 'cash' | 'bank' | 'credit_card' | 'savings' | 'investment' | 'other';
+
+export interface Account {
+  id: string;
+  name: string;
+  type: AccountType;
+  balance: number; // initial/seed balance
+  color: string;
+  icon: string;
+  isDefault: boolean;
+  createdAt: string;
+}
+
+export const ACCOUNT_TYPE_LABELS: Record<AccountType, string> = {
+  cash: 'Cash',
+  bank: 'Bank Account',
+  credit_card: 'Credit Card',
+  savings: 'Savings',
+  investment: 'Investment',
+  other: 'Other',
+};
+
+export const ACCOUNT_TYPE_ICONS: Record<AccountType, string> = {
+  cash: 'payments',
+  bank: 'account-balance',
+  credit_card: 'credit-card',
+  savings: 'savings',
+  investment: 'trending-up',
+  other: 'wallet',
+};
+
+export interface Transfer {
+  id: string;
+  fromAccountId: string;
+  toAccountId: string;
+  amount: number;
+  description?: string;
+  date: string; // ISO date string
+  currency?: string;
+}
+
 export interface Expense {
   id: string;
   amount: number;
@@ -12,6 +53,7 @@ export interface Expense {
   tags?: string[]; // cross-cutting labels (e.g., "Vacation", "Tax-deductible")
   splits?: ExpenseSplit[]; // optional split across categories/budgets; sum equals amount
   pinned?: boolean; // pinned expenses appear at top of expense list
+  accountId?: string; // link to Account
 }
 
 export interface ExpenseSplit {
@@ -94,6 +136,7 @@ export interface Income {
   source: IncomeSource;
   description: string;
   date: string; // ISO date string
+  accountId?: string; // link to Account
 }
 
 export type IncomeSource =
@@ -177,6 +220,7 @@ export interface FixedExpense {
   startDate?: string; // YYYY-MM-DD when this recurring item was created
   lastProcessedDate?: string; // YYYY-MM-DD of last auto-generated expense
   paused?: boolean; // if true, skip auto-processing and balance calculations
+  dueDay?: number; // 1-31, day of month when this bill is due
 }
 
 export interface FixedIncome {
@@ -188,6 +232,7 @@ export interface FixedIncome {
   startDate?: string; // YYYY-MM-DD when this recurring item was created
   lastProcessedDate?: string; // YYYY-MM-DD of last auto-generated income
   paused?: boolean; // if true, skip auto-processing and balance calculations
+  dueDay?: number; // 1-31, day of month when this payment is expected
 }
 
 export interface SavingsGoal {

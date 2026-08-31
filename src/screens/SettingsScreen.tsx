@@ -37,6 +37,15 @@ export const SettingsScreen: React.FC = () => {
   const setMonthlyIncome = useExpenseStore((s) => s.setMonthlyIncome);
   const currencySymbol = useExpenseStore((s) => s.currencySymbol);
   const resetAllData = useExpenseStore((s) => s.resetAllData);
+  const autoBackupEnabled = useExpenseStore((s) => s.autoBackupEnabled);
+  const setAutoBackupEnabled = useExpenseStore((s) => s.setAutoBackupEnabled);
+  const autoBackupFrequency = useExpenseStore((s) => s.autoBackupFrequency);
+  const setAutoBackupFrequency = useExpenseStore((s) => s.setAutoBackupFrequency);
+  const useRecurringAsMonthlyIncome = useExpenseStore((s) => s.useRecurringAsMonthlyIncome);
+  const setUseRecurringAsMonthlyIncome = useExpenseStore((s) => s.setUseRecurringAsMonthlyIncome);
+  const fixedIncomesTotal = useExpenseStore((s) => s.getFixedIncomesTotal());
+  const reminderLeadDays = useExpenseStore((s) => s.reminderLeadDays);
+  const setReminderLeadDays = useExpenseStore((s) => s.setReminderLeadDays);
   const [biometricAvailable, setBiometricAvailable] = useState(false);
   const [biometricType, setBiometricType] = useState('Biometrics');
   const [apiKeyValue, setApiKeyValue] = useState('');
@@ -284,6 +293,27 @@ export const SettingsScreen: React.FC = () => {
           </TouchableOpacity>
         </GlassCard>
 
+        {/* Accounts */}
+        <GlassCard style={styles.card}>
+          <TouchableOpacity
+            style={styles.settingRow}
+            onPress={() => navigation.navigate('Accounts' as never)}
+          >
+            <View style={styles.settingInfo}>
+              <View style={[styles.settingIcon, { backgroundColor: isDark ? 'rgba(108, 99, 255, 0.12)' : 'rgba(108, 99, 255, 0.08)' }]}>
+                <MaterialIcons name="account-balance" size={22} color={colors.primary} />
+              </View>
+              <View>
+                <Text style={[styles.settingTitle, { color: colors.textPrimary }]}>Accounts & Wallets</Text>
+                <Text style={[styles.settingSubtitle, { color: colors.textSecondary }]}>
+                  Manage bank, cash, and credit card accounts
+                </Text>
+              </View>
+            </View>
+            <MaterialIcons name="chevron-right" size={22} color={colors.textMuted} />
+          </TouchableOpacity>
+        </GlassCard>
+
         {/* Financial */}
         <Text style={[styles.sectionLabel, { color: colors.textMuted }]}>FINANCIAL</Text>
         <GlassCard style={styles.card}>
@@ -349,6 +379,31 @@ export const SettingsScreen: React.FC = () => {
             </View>
           </View>
         </Modal>
+
+        {/* Variable Income */}
+        <GlassCard style={styles.card}>
+          <View style={styles.settingRow}>
+            <View style={styles.settingInfo}>
+              <View style={[styles.settingIcon, { backgroundColor: isDark ? 'rgba(130, 224, 170, 0.12)' : 'rgba(130, 224, 170, 0.08)' }]}>
+                <MaterialIcons name="sync-alt" size={22} color="#82E0AA" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.settingTitle, { color: colors.textPrimary }]}>Use Recurring as Income</Text>
+                <Text style={[styles.settingSubtitle, { color: colors.textSecondary }]}>
+                  {useRecurringAsMonthlyIncome
+                    ? `Based on recurring: ${currencySymbol}${fixedIncomesTotal.toLocaleString(undefined, { maximumFractionDigits: 0 })}/mo`
+                    : 'Use recurring incomes instead of fixed amount'}
+                </Text>
+              </View>
+            </View>
+            <Switch
+              value={useRecurringAsMonthlyIncome}
+              onValueChange={setUseRecurringAsMonthlyIncome}
+              trackColor={{ false: colors.border, true: colors.success }}
+              thumbColor="#FFF"
+            />
+          </View>
+        </GlassCard>
 
         {/* AI Assistant */}
         <Text style={[styles.sectionLabel, { color: colors.textMuted }]}>AI ASSISTANT</Text>
@@ -486,6 +541,44 @@ export const SettingsScreen: React.FC = () => {
           </View>
         </GlassCard>
 
+        {/* Reminder Lead Days */}
+        <GlassCard style={styles.card}>
+          <View style={styles.settingRow}>
+            <View style={styles.settingInfo}>
+              <View style={[styles.settingIcon, { backgroundColor: isDark ? 'rgba(255, 170, 0, 0.12)' : 'rgba(255, 170, 0, 0.08)' }]}>
+                <MaterialIcons name="event" size={22} color={colors.warning} />
+              </View>
+              <View>
+                <Text style={[styles.settingTitle, { color: colors.textPrimary }]}>Bill Reminder Lead Time</Text>
+                <Text style={[styles.settingSubtitle, { color: colors.textSecondary }]}>
+                  Notify {reminderLeadDays} day{reminderLeadDays !== 1 ? 's' : ''} before due date
+                </Text>
+              </View>
+            </View>
+          </View>
+          <View style={styles.themeSelectorRow}>
+            {([1, 2, 3, 5, 7] as const).map((days) => (
+              <TouchableOpacity
+                key={days}
+                style={[
+                  styles.themeOption,
+                  { backgroundColor: colors.background, borderColor: colors.border },
+                  reminderLeadDays === days && { borderColor: colors.primary, backgroundColor: `${colors.primary}15` },
+                ]}
+                onPress={() => setReminderLeadDays(days)}
+              >
+                <Text style={[
+                  styles.themeOptionText,
+                  { color: colors.textMuted },
+                  reminderLeadDays === days && { color: colors.primary },
+                ]}>
+                  {days}d
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </GlassCard>
+
         {/* Data */}
         <Text style={[styles.sectionLabel, { color: colors.textMuted }]}>DATA</Text>
         <GlassCard style={styles.card}>
@@ -529,6 +622,57 @@ export const SettingsScreen: React.FC = () => {
               disabled={!pushNotificationsEnabled}
             />
           </View>
+        </GlassCard>
+
+        {/* Auto Backup */}
+        <GlassCard style={styles.card}>
+          <View style={styles.settingRow}>
+            <View style={styles.settingInfo}>
+              <View style={[styles.settingIcon, { backgroundColor: isDark ? 'rgba(0, 214, 143, 0.12)' : 'rgba(0, 214, 143, 0.08)' }]}>
+                <MaterialIcons name="cloud-done" size={22} color={colors.success} />
+              </View>
+              <View>
+                <Text style={[styles.settingTitle, { color: colors.textPrimary }]}>Auto Backup</Text>
+                <Text style={[styles.settingSubtitle, { color: colors.textSecondary }]}>
+                  {autoBackupEnabled ? 'Saves to device automatically' : 'Automatically save backup copies'}
+                </Text>
+              </View>
+            </View>
+            <Switch
+              value={autoBackupEnabled}
+              onValueChange={setAutoBackupEnabled}
+              trackColor={{ false: colors.border, true: colors.success }}
+              thumbColor="#FFF"
+            />
+          </View>
+          {autoBackupEnabled && (
+            <View style={[styles.themeSelectorRow, { marginTop: SPACING.sm }]}>
+              {([
+                ['daily', 'Daily'],
+                ['every5', 'Every 5'],
+                ['every10', 'Every 10'],
+                ['every20', 'Every 20'],
+              ] as const).map(([freq, label]) => (
+                <TouchableOpacity
+                  key={freq}
+                  style={[
+                    styles.themeOption,
+                    { backgroundColor: colors.background, borderColor: colors.border },
+                    autoBackupFrequency === freq && { borderColor: colors.primary, backgroundColor: `${colors.primary}15` },
+                  ]}
+                  onPress={() => setAutoBackupFrequency(freq)}
+                >
+                  <Text style={[
+                    styles.themeOptionText,
+                    { color: colors.textMuted },
+                    autoBackupFrequency === freq && { color: colors.primary },
+                  ]}>
+                    {label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
         </GlassCard>
 
         <GlassCard style={styles.card}>

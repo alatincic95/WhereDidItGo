@@ -1,6 +1,6 @@
 import { Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
-import { FixedExpense, FREQUENCY_TO_MONTHLY } from '../types';
+import { FixedExpense, FixedIncome, FREQUENCY_TO_MONTHLY } from '../types';
 
 // Configure how notifications appear when the app is in the foreground
 Notifications.setNotificationHandler({
@@ -209,6 +209,70 @@ export async function scheduleBackupReminder(lastBackupDate: string | null): Pro
       });
     } catch {}
   }
+}
+
+/**
+ * Schedule due date reminders for recurring expenses and incomes.
+ * Fires `leadDays` days before each item's `dueDay` each month.
+ */
+export async function scheduleDueDateReminders(
+  fixedExpenses: FixedExpense[],
+  fixedIncomes: FixedIncome[],
+  leadDays: number,
+  currencySymbol: string,
+): Promise<void> {
+  if (Platform.OS === 'web') return;
+
+  const now = new Date();
+  const items: { id: string; description: string; amount: number; dueDay: number; type: 'expense' | 'income' }[] = [];
+
+  fixedExpenses.filter((e) => !e.paused && e.dueDay).forEach((e) => {
+    items.push({ id: e.id, description: e.description, amount: e.amount, dueDay: e.dueDay!, type: 'expense' });
+  });
+  fixedIncomes.filter((i) => !i.paused && i.dueDay).forEach((i) => {
+    items.push({ id: i.id, description: i.description, amount: i.amount, dueDay: i.dueDay!, type: 'income' });
+  });
+
+  for (const item of items) {
+    const identifier = `due-reminder-${item.id}`;
+    await Notifications.cancelScheduledNotificationAsync(identifier).catch(() => {});
+
+    // Calculate next due date
+    let dueDate = new Date(now.getFullYear(), now.getMonth(), item.dueDay, 9, 0, 0);
+    if (dueDate.getDate() !== item.dueDay) {
+      // Day doesn't exist in this month (e.g., 31 in Feb), use last day
+      dueDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 9, 0, 0);
+    }
+    // If due date already passed this month, schedule for next month
+    if (dueDate.getTime() - leadDays * 86400000 < now.getTime()) {
+      dueDate = new Date(now.getFullYear(), now.getMonth() + 1, item.dueDay, 9, 0, 0);
+      if (dueDate.getDate() !== item.dueDay) {
+        dueDate = new Date(now.getFullYear(), now.getMonth() + 2, 0, 9, 0, 0);
+      }
+    }
+
+    const reminderDate = new Date(dueDate.getTime() - leadDays * 86400000);
+    const secondsUntil = Math.max(1, Math.floor((reminderDate.getTime() - now.getTime()) / 1000));
+
+    const typeLabel = item.type === 'expense' ? 'Bill' : 'Income';
+    try {
+      await Notifications.scheduleNotificationAsync({
+        identifier,
+        content: {
+          title: `Upcoming ${typeLabel}: ${item.description}`,
+          body: `${currencySymbol}${item.amount.toLocaleString()} due on the ${item.dueDay}${getOrdinalSuffix(item.dueDay)}`,
+          sound: true,
+        },
+        trigger: { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: secondsUntil },
+      });
+    } catch {}
+  }
+}
+
+function getOrdinalSuffix(n: number): string {
+  const s = ['th', 'st', 'nd', 'rd'];
+  const v = n % 100;
+  return s[(v - 20) % 10] || s[v] || s[0];
 }
 
 /**
