@@ -80,7 +80,10 @@ export const AddIncomeScreen: React.FC = () => {
     editingIncome?.date ? new Date(editingIncome.date) : new Date()
   );
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [selectedAccountId, setSelectedAccountId] = useState<string | undefined>(editingIncome?.accountId);
+  const defaultAccount = useExpenseStore((s) => s.accounts.find((a) => a.isDefault) || s.accounts[0]);
+  const [selectedAccountId, setSelectedAccountId] = useState<string>(
+    editingIncome?.accountId || defaultAccount?.id || ''
+  );
 
   // Animations
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -135,7 +138,7 @@ export const AddIncomeScreen: React.FC = () => {
       source: source as IncomeSource,
       description,
       date: date.toISOString(),
-      accountId: selectedAccountId,
+      accountId: selectedAccountId || undefined,
     };
 
     if (editingIncome) {

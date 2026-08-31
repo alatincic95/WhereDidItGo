@@ -1,6 +1,7 @@
 import { StateCreator } from 'zustand';
 import { Expense, FixedExpense, FixedIncome, Income, Budget, CustomCategory, ExchangeRate, SavingsGoal, BudgetTemplate, CategoryBudget, DashboardCardConfig, DEFAULT_DASHBOARD_CARDS, IncomeSource, YoYMonthData, Account, Transfer } from '../../types';
 import { DEFAULT_ACCOUNT } from './accountSlice';
+import { CryptoHolding } from './cryptoSlice';
 import { StoreState } from '../useExpenseStore';
 import { computeDueDates, generateRecurringId } from '../../utils/recurringProcessor';
 
@@ -26,6 +27,7 @@ export interface ComputedSlice {
     dashboardCards?: DashboardCardConfig[];
     accounts?: Account[];
     transfers?: Transfer[];
+    cryptoHoldings?: CryptoHolding[];
     initialBalance: number;
     monthlyIncome: number;
     currencySymbol: string;
@@ -44,6 +46,7 @@ export interface ComputedSlice {
     dashboardCards: DashboardCardConfig[];
     accounts: Account[];
     transfers: Transfer[];
+    cryptoHoldings: CryptoHolding[];
     initialBalance: number;
     monthlyIncome: number;
     currencySymbol: string;
@@ -66,12 +69,18 @@ export const createComputedSlice: StateCreator<StoreState, [], [], ComputedSlice
   },
 
   getOverallBalance: () => {
-    const { selectedAccountId, accounts } = get();
+    const { selectedAccountId, accounts, cryptoIncludeInBalance } = get();
+    let balance: number;
     if (selectedAccountId) {
-      return get().getAccountBalance(selectedAccountId);
+      balance = get().getAccountBalance(selectedAccountId);
+    } else {
+      // "All Accounts": sum of all individual account balances
+      balance = accounts.reduce((sum, a) => sum + get().getAccountBalance(a.id), 0);
     }
-    // "All Accounts": sum of all individual account balances
-    return accounts.reduce((sum, a) => sum + get().getAccountBalance(a.id), 0);
+    if (cryptoIncludeInBalance && !selectedAccountId) {
+      balance += get().getCryptoPortfolioValue();
+    }
+    return balance;
   },
 
   getTrackedMonths: () => {
@@ -227,6 +236,7 @@ export const createComputedSlice: StateCreator<StoreState, [], [], ComputedSlice
       dashboardCards: data.dashboardCards || DEFAULT_DASHBOARD_CARDS,
       accounts: data.accounts && data.accounts.length > 0 ? data.accounts : [DEFAULT_ACCOUNT],
       transfers: data.transfers || [],
+      cryptoHoldings: data.cryptoHoldings || [],
       initialBalance: data.initialBalance ?? 0,
       monthlyIncome: data.monthlyIncome ?? 0,
       currencySymbol: data.currencySymbol || '$',
@@ -248,6 +258,7 @@ export const createComputedSlice: StateCreator<StoreState, [], [], ComputedSlice
       dashboardCards: s.dashboardCards,
       accounts: s.accounts,
       transfers: s.transfers,
+      cryptoHoldings: s.cryptoHoldings,
       initialBalance: s.initialBalance,
       monthlyIncome: s.monthlyIncome,
       currencySymbol: s.currencySymbol,

@@ -26,6 +26,7 @@ import { GlobalSearchScreen } from '../screens/GlobalSearchScreen';
 import { BillCalendarScreen } from '../screens/BillCalendarScreen';
 import { AnnualReportScreen } from '../screens/AnnualReportScreen';
 import { AccountsScreen } from '../screens/AccountsScreen';
+import { CryptoScreen } from '../screens/CryptoScreen';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { useTheme } from '../contexts/ThemeContext';
 
@@ -149,6 +150,7 @@ const SafeGlobalSearch = withErrorBoundary(GlobalSearchScreen, 'Search');
 const SafeBillCalendar = withErrorBoundary(BillCalendarScreen, 'Bill Calendar');
 const SafeAnnualReport = withErrorBoundary(AnnualReportScreen, 'Annual Report');
 const SafeAccounts = withErrorBoundary(AccountsScreen, 'Accounts');
+const SafeCrypto = withErrorBoundary(CryptoScreen, 'Crypto');
 
 export function AppNavigator() {
   return (
@@ -273,6 +275,13 @@ export function AppNavigator() {
         <Stack.Screen
           name="Accounts"
           component={SafeAccounts}
+          options={{
+            animation: 'slide_from_right',
+          }}
+        />
+        <Stack.Screen
+          name="Crypto"
+          component={SafeCrypto}
           options={{
             animation: 'slide_from_right',
           }}

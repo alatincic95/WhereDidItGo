@@ -14,16 +14,37 @@ export const AccountSelector: React.FC<AccountSelectorProps> = ({ selectedAccoun
   const { colors } = useTheme();
   const accounts = useExpenseStore((s) => s.accounts);
 
-  if (accounts.length <= 1) return null; // Don't show if only default account
-
-  const selected = accounts.find((a) => a.id === selectedAccountId) || accounts.find((a) => a.isDefault);
+  const isNoneSelected = selectedAccountId === 'none';
 
   return (
     <View style={styles.container}>
       <Text style={[styles.label, { color: colors.textMuted }]}>Account</Text>
       <View style={styles.row}>
+        <TouchableOpacity
+          style={[
+            styles.chip,
+            { backgroundColor: colors.surface, borderColor: colors.border },
+            isNoneSelected && { borderColor: colors.textMuted, backgroundColor: `${colors.textMuted}15` },
+          ]}
+          onPress={() => onSelect('none')}
+        >
+          <MaterialIcons
+            name="block"
+            size={16}
+            color={isNoneSelected ? colors.textPrimary : colors.textMuted}
+          />
+          <Text
+            style={[
+              styles.chipText,
+              { color: colors.textSecondary },
+              isNoneSelected && { color: colors.textPrimary },
+            ]}
+          >
+            None
+          </Text>
+        </TouchableOpacity>
         {accounts.map((account) => {
-          const isSelected = account.id === (selectedAccountId || selected?.id);
+          const isSelected = !isNoneSelected && account.id === selectedAccountId;
           return (
             <TouchableOpacity
               key={account.id}

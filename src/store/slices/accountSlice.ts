@@ -99,16 +99,18 @@ export const createAccountSlice: StateCreator<StoreState, [], [], AccountSlice> 
     const isDefault = account.isDefault;
     let balance = account.balance;
 
-    // Add incomes for this account
+    // Add incomes for this account ('none' = explicitly unlinked, skip)
     incomes.forEach((i) => {
+      if (i.accountId === 'none') return;
       if (i.accountId === accountId || (isDefault && !i.accountId)) {
         balance += i.amount;
       }
     });
 
-    // Subtract expenses for this account
+    // Subtract expenses for this account ('none' = explicitly unlinked, skip)
     expenses.forEach((e) => {
       if (!e.isFixed) {
+        if (e.accountId === 'none') return;
         if (e.accountId === accountId || (isDefault && !e.accountId)) {
           balance -= get().convertToBase(e.amount, e.currency);
         }

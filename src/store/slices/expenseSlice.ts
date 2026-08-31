@@ -219,7 +219,7 @@ export const createExpenseSlice: StateCreator<StoreState, [], [], ExpenseSlice> 
     if (selectedAccountId) {
       const isDefault = accounts.find((a) => a.id === selectedAccountId)?.isDefault;
       filtered = filtered.filter((e) =>
-        e.accountId === selectedAccountId || (isDefault && !e.accountId)
+        e.accountId !== 'none' && (e.accountId === selectedAccountId || (isDefault && !e.accountId))
       );
     }
     return filtered;
@@ -266,7 +266,7 @@ export const createExpenseSlice: StateCreator<StoreState, [], [], ExpenseSlice> 
     const totals: Record<string, number> = {};
     const isDefaultSelected = selectedAccountId ? accounts.find((a) => a.id === selectedAccountId)?.isDefault : false;
     const matchAccount = (e: { accountId?: string }) =>
-      !selectedAccountId || e.accountId === selectedAccountId || (isDefaultSelected && !e.accountId);
+      !selectedAccountId || (e.accountId !== 'none' && (e.accountId === selectedAccountId || (isDefaultSelected && !e.accountId)));
     expenses.filter((e) => !e.isFixed && matchAccount(e)).forEach((e) => {
       if (e.splits && e.splits.length > 0) {
         e.splits.forEach((s) => {
@@ -289,7 +289,7 @@ export const createExpenseSlice: StateCreator<StoreState, [], [], ExpenseSlice> 
     return expenses.filter((e) => {
       if (e.isFixed) return false;
       if (!selectedAccountId) return true;
-      return e.accountId === selectedAccountId || (isDefaultSelected && !e.accountId);
+      return e.accountId !== 'none' && (e.accountId === selectedAccountId || (isDefaultSelected && !e.accountId));
     }).reduce((sum, e) => sum + convert(e.amount, e.currency), 0);
   },
 });

@@ -69,7 +69,10 @@ export const AddExpenseScreen: React.FC = () => {
     editingExpense?.projectId || preselectedProjectId
   );
   const [isPending, setIsPending] = useState(editingExpense?.isPending ?? false);
-  const [selectedAccountId, setSelectedAccountId] = useState<string | undefined>(editingExpense?.accountId);
+  const defaultAccount = useExpenseStore((s) => s.accounts.find((a) => a.isDefault) || s.accounts[0]);
+  const [selectedAccountId, setSelectedAccountId] = useState<string>(
+    editingExpense?.accountId || defaultAccount?.id || ''
+  );
   const [expenseCurrency, setExpenseCurrency] = useState<string | undefined>(editingExpense?.currency);
   const [receiptUri, setReceiptUri] = useState<string | undefined>(editingExpense?.receiptUri);
   const [showReceiptFull, setShowReceiptFull] = useState(false);
@@ -206,7 +209,7 @@ export const AddExpenseScreen: React.FC = () => {
       receiptUri,
       tags: tags.length > 0 ? tags : undefined,
       splits: splits.length > 0 ? splits : undefined,
-      accountId: selectedAccountId,
+      accountId: selectedAccountId || undefined,
     };
 
     if (editingExpense) {

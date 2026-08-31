@@ -93,7 +93,7 @@ export const createIncomeSlice: StateCreator<StoreState, [], [], IncomeSlice> = 
     if (selectedAccountId) {
       const isDefault = accounts.find((a) => a.id === selectedAccountId)?.isDefault;
       filtered = filtered.filter((i) =>
-        i.accountId === selectedAccountId || (isDefault && !i.accountId)
+        i.accountId !== 'none' && (i.accountId === selectedAccountId || (isDefault && !i.accountId))
       );
     }
     return filtered;
@@ -111,7 +111,7 @@ export const createIncomeSlice: StateCreator<StoreState, [], [], IncomeSlice> = 
     }
     const isDefault = accounts.find((a) => a.id === selectedAccountId)?.isDefault;
     return incomes.filter((i) =>
-      i.accountId === selectedAccountId || (isDefault && !i.accountId)
+      i.accountId !== 'none' && (i.accountId === selectedAccountId || (isDefault && !i.accountId))
     ).reduce((sum, i) => sum + i.amount, 0);
   },
 });

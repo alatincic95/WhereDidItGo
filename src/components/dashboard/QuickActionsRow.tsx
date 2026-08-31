@@ -61,6 +61,22 @@ export const QuickActionsRow: React.FC<QuickActionsRowProps> = ({ navigation }) 
           <MaterialIcons name="chevron-right" size={18} color={colors.textMuted} />
         </LinearGradient>
       </TouchableOpacity>
+      <TouchableOpacity
+        style={[styles.quickActionCard, { borderColor: '#F7931A1A' }]}
+        activeOpacity={0.7}
+        onPress={() => navigation.navigate('Crypto')}
+      >
+        <LinearGradient
+          colors={['#F7931A26', '#F7931A14']}
+          style={styles.quickActionGradient}
+        >
+          <View style={[styles.quickActionIcon, { backgroundColor: '#F7931A26' }]}>
+            <MaterialIcons name="currency-bitcoin" size={22} color="#F7931A" />
+          </View>
+          <Text style={[styles.quickActionLabel, { color: colors.textPrimary }]}>Crypto</Text>
+          <MaterialIcons name="chevron-right" size={18} color={colors.textMuted} />
+        </LinearGradient>
+      </TouchableOpacity>
     </>
   );
 };
