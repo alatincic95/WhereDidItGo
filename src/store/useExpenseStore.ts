@@ -11,6 +11,7 @@ import { SettingsSlice, createSettingsSlice } from './slices/settingsSlice';
 import { ComputedSlice, createComputedSlice } from './slices/computedSlice';
 import { AccountSlice, createAccountSlice } from './slices/accountSlice';
 import { CryptoSlice, createCryptoSlice } from './slices/cryptoSlice';
+import { DebtSlice, createDebtSlice } from './slices/debtSlice';
 
 export type StoreState = ExpenseSlice &
   IncomeSlice &
@@ -19,7 +20,8 @@ export type StoreState = ExpenseSlice &
   SettingsSlice &
   ComputedSlice &
   AccountSlice &
-  CryptoSlice;
+  CryptoSlice &
+  DebtSlice;
 
 export const useExpenseStore = create<StoreState>()(
   persist(
@@ -32,6 +34,7 @@ export const useExpenseStore = create<StoreState>()(
       ...createComputedSlice(set, get, api),
       ...createAccountSlice(set, get, api),
       ...createCryptoSlice(set, get, api),
+      ...createDebtSlice(set, get, api),
     }),
     {
       name: 'expense-store',
@@ -68,6 +71,9 @@ export const useExpenseStore = create<StoreState>()(
         cryptoPrices: state.cryptoPrices,
         cryptoLastFetched: state.cryptoLastFetched,
         cryptoIncludeInBalance: state.cryptoIncludeInBalance,
+        debts: state.debts,
+        debtExtraPayment: state.debtExtraPayment,
+        debtStrategy: state.debtStrategy,
       }),
       migrate: (persistedState: any, version: number) => {
         // v0 → v1: rename projects to budgets

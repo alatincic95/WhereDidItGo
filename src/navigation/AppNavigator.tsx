@@ -27,6 +27,7 @@ import { BillCalendarScreen } from '../screens/BillCalendarScreen';
 import { AnnualReportScreen } from '../screens/AnnualReportScreen';
 import { AccountsScreen } from '../screens/AccountsScreen';
 import { CryptoScreen } from '../screens/CryptoScreen';
+import { DebtPayoffScreen } from '../screens/DebtPayoffScreen';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { useTheme } from '../contexts/ThemeContext';
 
@@ -151,6 +152,7 @@ const SafeBillCalendar = withErrorBoundary(BillCalendarScreen, 'Bill Calendar');
 const SafeAnnualReport = withErrorBoundary(AnnualReportScreen, 'Annual Report');
 const SafeAccounts = withErrorBoundary(AccountsScreen, 'Accounts');
 const SafeCrypto = withErrorBoundary(CryptoScreen, 'Crypto');
+const SafeDebtPayoff = withErrorBoundary(DebtPayoffScreen, 'Debt Payoff');
 
 export function AppNavigator() {
   return (
@@ -282,6 +284,13 @@ export function AppNavigator() {
         <Stack.Screen
           name="Crypto"
           component={SafeCrypto}
+          options={{
+            animation: 'slide_from_right',
+          }}
+        />
+        <Stack.Screen
+          name="DebtPayoff"
+          component={SafeDebtPayoff}
           options={{
             animation: 'slide_from_right',
           }}

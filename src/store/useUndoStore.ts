@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-export type UndoEntityType = 'expense' | 'income' | 'budget' | 'goal';
+export type UndoEntityType = 'expense' | 'income' | 'budget' | 'goal' | 'debt';
 
 interface UndoEntry {
   id: number;

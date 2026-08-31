@@ -1,5 +1,5 @@
 import { StateCreator } from 'zustand';
-import { Expense, FixedExpense, FixedIncome, Income, Budget, CustomCategory, ExchangeRate, SavingsGoal, BudgetTemplate, CategoryBudget, DashboardCardConfig, DEFAULT_DASHBOARD_CARDS, IncomeSource, YoYMonthData, Account, Transfer } from '../../types';
+import { Expense, FixedExpense, FixedIncome, Income, Budget, CustomCategory, ExchangeRate, SavingsGoal, BudgetTemplate, CategoryBudget, DashboardCardConfig, DEFAULT_DASHBOARD_CARDS, IncomeSource, YoYMonthData, Account, Transfer, Debt } from '../../types';
 import { DEFAULT_ACCOUNT } from './accountSlice';
 import { CryptoHolding } from './cryptoSlice';
 import { StoreState } from '../useExpenseStore';
@@ -28,6 +28,7 @@ export interface ComputedSlice {
     accounts?: Account[];
     transfers?: Transfer[];
     cryptoHoldings?: CryptoHolding[];
+    debts?: Debt[];
     initialBalance: number;
     monthlyIncome: number;
     currencySymbol: string;
@@ -47,6 +48,7 @@ export interface ComputedSlice {
     accounts: Account[];
     transfers: Transfer[];
     cryptoHoldings: CryptoHolding[];
+    debts: Debt[];
     initialBalance: number;
     monthlyIncome: number;
     currencySymbol: string;
@@ -59,8 +61,9 @@ export const createComputedSlice: StateCreator<StoreState, [], [], ComputedSlice
     const monthlyTotal = get().getMonthlyTotal(month);
     const extraIncome = get().getMonthlyExtraIncome(month);
     if (selectedAccountId) {
-      // Per-account: only that account's transactions
-      return extraIncome - monthlyTotal;
+      // Per-account: show full account balance (seed + all transactions),
+      // not just this month's net, so it matches the account switcher value.
+      return get().getAccountBalance(selectedAccountId);
     }
     const baseIncome = useRecurringAsMonthlyIncome ? 0 : monthlyIncome;
     const fixedTotal = get().getFixedExpensesTotal();
@@ -237,6 +240,7 @@ export const createComputedSlice: StateCreator<StoreState, [], [], ComputedSlice
       accounts: data.accounts && data.accounts.length > 0 ? data.accounts : [DEFAULT_ACCOUNT],
       transfers: data.transfers || [],
       cryptoHoldings: data.cryptoHoldings || [],
+      debts: data.debts || [],
       initialBalance: data.initialBalance ?? 0,
       monthlyIncome: data.monthlyIncome ?? 0,
       currencySymbol: data.currencySymbol || '$',
@@ -259,6 +263,7 @@ export const createComputedSlice: StateCreator<StoreState, [], [], ComputedSlice
       accounts: s.accounts,
       transfers: s.transfers,
       cryptoHoldings: s.cryptoHoldings,
+      debts: s.debts,
       initialBalance: s.initialBalance,
       monthlyIncome: s.monthlyIncome,
       currencySymbol: s.currencySymbol,

@@ -428,20 +428,9 @@ export const CryptoScreen: React.FC = () => {
           <MaterialIcons name="arrow-back" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Crypto Portfolio</Text>
-        <View style={{ flexDirection: 'row', gap: SPACING.sm }}>
-          {cryptoHoldings.length > 0 && (
-            <TouchableOpacity onPress={handleToggleChart} style={styles.headerBtn}>
-              <MaterialIcons
-                name={showChart ? 'show-chart' : 'show-chart'}
-                size={24}
-                color={showChart ? colors.primary : colors.textMuted}
-              />
-            </TouchableOpacity>
-          )}
-          <TouchableOpacity onPress={() => setShowAddModal(true)} style={styles.headerBtn}>
-            <MaterialIcons name="add" size={24} color={colors.primary} />
-          </TouchableOpacity>
-        </View>
+        <TouchableOpacity onPress={() => setShowAddModal(true)} style={styles.headerBtn}>
+          <MaterialIcons name="add" size={24} color={colors.primary} />
+        </TouchableOpacity>
       </View>
 
       <ScrollView
@@ -475,6 +464,34 @@ export const CryptoScreen: React.FC = () => {
               Include in overall balance
             </Text>
           </TouchableOpacity>
+
+          {cryptoHoldings.length > 0 && (
+            <TouchableOpacity
+              style={[
+                styles.chartToggleBtn,
+                {
+                  backgroundColor: showChart ? colors.primary : `${colors.primary}15`,
+                  borderColor: showChart ? colors.primary : `${colors.primary}40`,
+                },
+              ]}
+              activeOpacity={0.7}
+              onPress={handleToggleChart}
+            >
+              <MaterialIcons
+                name="show-chart"
+                size={20}
+                color={showChart ? '#FFF' : colors.primary}
+              />
+              <Text
+                style={[
+                  styles.chartToggleText,
+                  { color: showChart ? '#FFF' : colors.primary },
+                ]}
+              >
+                {showChart ? 'Hide Chart' : 'View Chart'}
+              </Text>
+            </TouchableOpacity>
+          )}
         </LinearGradient>
 
         {/* Portfolio Chart */}
@@ -1062,6 +1079,22 @@ const styles = StyleSheet.create({
     borderRadius: BORDER_RADIUS.md,
   },
   includeText: { fontSize: FONT_SIZE.sm, fontWeight: '500' },
+  chartToggleBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: SPACING.xs,
+    paddingVertical: 10,
+    paddingHorizontal: SPACING.lg,
+    borderRadius: BORDER_RADIUS.lg,
+    borderWidth: 1,
+    marginTop: SPACING.sm,
+    alignSelf: 'center',
+  },
+  chartToggleText: {
+    fontSize: FONT_SIZE.sm,
+    fontWeight: '700',
+  },
 
   // Chart
   chartCard: {

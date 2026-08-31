@@ -548,9 +548,6 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.lg,
   },
   quickActionsRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: SPACING.md,
     marginBottom: SPACING.lg,
   },
 });

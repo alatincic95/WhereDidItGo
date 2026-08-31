@@ -270,6 +270,52 @@ export interface BudgetTemplate {
   createdAt: string;
 }
 
+// ── Debt Payoff ──────────────────────────────────────────────────────
+
+export type DebtType = 'credit_card' | 'student_loan' | 'car_loan' | 'mortgage' | 'personal_loan' | 'medical' | 'other';
+
+export const DEBT_TYPE_LABELS: Record<DebtType, string> = {
+  credit_card: 'Credit Card',
+  student_loan: 'Student Loan',
+  car_loan: 'Car Loan',
+  mortgage: 'Mortgage',
+  personal_loan: 'Personal Loan',
+  medical: 'Medical',
+  other: 'Other',
+};
+
+export const DEBT_TYPE_ICONS: Record<DebtType, string> = {
+  credit_card: 'credit-card',
+  student_loan: 'school',
+  car_loan: 'directions-car',
+  mortgage: 'home',
+  personal_loan: 'account-balance',
+  medical: 'medical-services',
+  other: 'more-horiz',
+};
+
+export const DEBT_TYPE_COLORS: Record<DebtType, string> = {
+  credit_card: '#FF6B6B',
+  student_loan: '#6C63FF',
+  car_loan: '#4ECDC4',
+  mortgage: '#45B7D1',
+  personal_loan: '#F0B27A',
+  medical: '#EC7063',
+  other: '#AEB6BF',
+};
+
+export interface Debt {
+  id: string;
+  name: string;
+  type: DebtType;
+  balance: number;          // current remaining balance
+  interestRate: number;     // annual percentage rate (APR), e.g. 19.99
+  minimumPayment: number;   // minimum monthly payment
+  createdAt: string;
+}
+
+export type PayoffStrategy = 'avalanche' | 'snowball';
+
 export type DashboardCardId = 'summary' | 'budgetUsage' | 'categories' | 'quickActions' | 'recentTransactions';
 
 export interface DashboardCardConfig {

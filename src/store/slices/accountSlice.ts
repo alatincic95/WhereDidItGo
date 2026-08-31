@@ -100,8 +100,10 @@ export const createAccountSlice: StateCreator<StoreState, [], [], AccountSlice> 
     let balance = account.balance;
 
     // Add incomes for this account ('none' = explicitly unlinked, skip)
+    const convert = get().convertToBase;
     incomes.forEach((i) => {
-      if (i.accountId === 'none') return;
+      if (!i.accountId && !isDefault) return;     // unset → default only
+      if (i.accountId === 'none') return;          // explicitly unlinked
       if (i.accountId === accountId || (isDefault && !i.accountId)) {
         balance += i.amount;
       }
@@ -109,11 +111,11 @@ export const createAccountSlice: StateCreator<StoreState, [], [], AccountSlice> 
 
     // Subtract expenses for this account ('none' = explicitly unlinked, skip)
     expenses.forEach((e) => {
-      if (!e.isFixed) {
-        if (e.accountId === 'none') return;
-        if (e.accountId === accountId || (isDefault && !e.accountId)) {
-          balance -= get().convertToBase(e.amount, e.currency);
-        }
+      if (e.isFixed) return;                       // auto-generated from recurring
+      if (!e.accountId && !isDefault) return;      // unset → default only
+      if (e.accountId === 'none') return;           // explicitly unlinked
+      if (e.accountId === accountId || (isDefault && !e.accountId)) {
+        balance -= convert(e.amount, e.currency);
       }
     });
 
