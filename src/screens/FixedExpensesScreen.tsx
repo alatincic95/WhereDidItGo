@@ -654,51 +654,46 @@ export const FixedExpensesScreen: React.FC = () => {
               </TouchableOpacity>
             )}
           </ScrollView>
+
+          {/* Delete Confirmation Overlay (inside edit modal) */}
+          {showDeleteConfirm && (
+            <TouchableOpacity
+              style={[styles.deleteOverlay, StyleSheet.absoluteFill]}
+              activeOpacity={1}
+              onPress={() => setShowDeleteConfirm(false)}
+            >
+              <View style={[styles.deleteContainer, { backgroundColor: colors.surface }]}>
+                <Text style={[styles.deleteTitle, { color: colors.textPrimary }]}>
+                  Delete {editingExpense ? 'Recurring Expense' : 'Recurring Income'}
+                </Text>
+                <Text style={[styles.deleteMessage, { color: colors.textSecondary }]}>Are you sure? This cannot be undone.</Text>
+                <View style={styles.deleteButtons}>
+                  <TouchableOpacity
+                    style={[styles.deleteCancelBtn, { backgroundColor: colors.background }]}
+                    onPress={() => setShowDeleteConfirm(false)}
+                  >
+                    <Text style={[styles.deleteCancelText, { color: colors.textSecondary }]}>Cancel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.deleteConfirmBtn}
+                    onPress={() => {
+                      if (editingExpense) {
+                        deleteFixedExpense(editingExpense.id);
+                      } else if (editingIncome) {
+                        deleteFixedIncome(editingIncome.id);
+                      }
+                      setShowDeleteConfirm(false);
+                      setModalVisible(false);
+                    }}
+                  >
+                    <Text style={styles.deleteConfirmText}>Delete</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </TouchableOpacity>
+          )}
         </View>
         </KeyboardAvoidingView>
-      </Modal>
-
-      {/* Delete Confirmation Modal */}
-      <Modal
-        visible={showDeleteConfirm}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowDeleteConfirm(false)}
-      >
-        <TouchableOpacity
-          style={styles.deleteOverlay}
-          activeOpacity={1}
-          onPress={() => setShowDeleteConfirm(false)}
-        >
-          <View style={[styles.deleteContainer, { backgroundColor: colors.surface }]}>
-            <Text style={[styles.deleteTitle, { color: colors.textPrimary }]}>
-              Delete {editingExpense ? 'Recurring Expense' : 'Recurring Income'}
-            </Text>
-            <Text style={[styles.deleteMessage, { color: colors.textSecondary }]}>Are you sure? This cannot be undone.</Text>
-            <View style={styles.deleteButtons}>
-              <TouchableOpacity
-                style={[styles.deleteCancelBtn, { backgroundColor: colors.background }]}
-                onPress={() => setShowDeleteConfirm(false)}
-              >
-                <Text style={[styles.deleteCancelText, { color: colors.textSecondary }]}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.deleteConfirmBtn}
-                onPress={() => {
-                  if (editingExpense) {
-                    deleteFixedExpense(editingExpense.id);
-                  } else if (editingIncome) {
-                    deleteFixedIncome(editingIncome.id);
-                  }
-                  setShowDeleteConfirm(false);
-                  setModalVisible(false);
-                }}
-              >
-                <Text style={styles.deleteConfirmText}>Delete</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </TouchableOpacity>
       </Modal>
     </View>
   );

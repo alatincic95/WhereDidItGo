@@ -331,7 +331,7 @@ export const AccountsScreen: React.FC = () => {
                 <Text style={[styles.actionBtnText, { color: colors.primary }]}>Set as Default</Text>
               </TouchableOpacity>
             )}
-            {editingAccount && !editingAccount.isDefault && (
+            {editingAccount && !editingAccount.isDefault && accounts.length > 1 && (
               <TouchableOpacity
                 style={styles.actionBtn}
                 onPress={() => setShowDeleteConfirm(true)}
@@ -340,34 +340,39 @@ export const AccountsScreen: React.FC = () => {
                 <Text style={[styles.actionBtnText, { color: COLORS.danger }]}>Delete Account</Text>
               </TouchableOpacity>
             )}
+            {editingAccount && editingAccount.isDefault && accounts.length > 1 && (
+              <Text style={{ color: colors.textMuted, fontSize: FONT_SIZE.xs, textAlign: 'center', marginTop: SPACING.lg }}>
+                Set another account as default first to delete this one
+              </Text>
+            )}
           </ScrollView>
-        </View>
-      </Modal>
 
-      {/* Delete Confirm */}
-      <Modal visible={showDeleteConfirm} transparent animationType="fade">
-        <View style={styles.overlay}>
-          <View style={[styles.confirmBox, { backgroundColor: colors.surface }]}>
-            <Text style={[styles.confirmTitle, { color: colors.textPrimary }]}>Delete Account?</Text>
-            <Text style={{ color: colors.textSecondary, marginBottom: SPACING.lg }}>
-              Transactions will be moved to the default account.
-            </Text>
-            <View style={styles.confirmBtns}>
-              <TouchableOpacity style={[styles.confirmBtn, { backgroundColor: colors.background }]} onPress={() => setShowDeleteConfirm(false)}>
-                <Text style={{ color: colors.textSecondary, fontWeight: '600' }}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.confirmBtn, { backgroundColor: 'rgba(255,61,113,0.12)' }]}
-                onPress={() => {
-                  if (editingAccount) deleteAccount(editingAccount.id);
-                  setShowDeleteConfirm(false);
-                  setModalVisible(false);
-                }}
-              >
-                <Text style={{ color: COLORS.danger, fontWeight: '600' }}>Delete</Text>
-              </TouchableOpacity>
+          {/* Delete Confirm Overlay (inside edit modal so it renders on top) */}
+          {showDeleteConfirm && (
+            <View style={[styles.overlay, StyleSheet.absoluteFill]}>
+              <View style={[styles.confirmBox, { backgroundColor: colors.surface }]}>
+                <Text style={[styles.confirmTitle, { color: colors.textPrimary }]}>Delete Account?</Text>
+                <Text style={{ color: colors.textSecondary, marginBottom: SPACING.lg }}>
+                  Transactions will be moved to the default account.
+                </Text>
+                <View style={styles.confirmBtns}>
+                  <TouchableOpacity style={[styles.confirmBtn, { backgroundColor: colors.background }]} onPress={() => setShowDeleteConfirm(false)}>
+                    <Text style={{ color: colors.textSecondary, fontWeight: '600' }}>Cancel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.confirmBtn, { backgroundColor: 'rgba(255,61,113,0.12)' }]}
+                    onPress={() => {
+                      if (editingAccount) deleteAccount(editingAccount.id);
+                      setShowDeleteConfirm(false);
+                      setModalVisible(false);
+                    }}
+                  >
+                    <Text style={{ color: COLORS.danger, fontWeight: '600' }}>Delete</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
             </View>
-          </View>
+          )}
         </View>
       </Modal>
 
