@@ -3,6 +3,13 @@ import { Account, AccountType, Transfer } from '../../types';
 import { StoreState } from '../useExpenseStore';
 import { uuidv4 } from '../utils';
 
+export interface CreditCardInfo {
+  owed: number;
+  limit: number;
+  available: number;
+  utilization: number; // 0-100
+}
+
 export interface AccountSlice {
   accounts: Account[];
   transfers: Transfer[];
@@ -14,6 +21,7 @@ export interface AccountSlice {
   setDefaultAccount: (id: string) => void;
   getDefaultAccount: () => Account | undefined;
   getAccountBalance: (accountId: string) => number;
+  getCreditCardInfo: (accountId: string) => CreditCardInfo | null;
   setSelectedAccountId: (id: string | null) => void;
 
   addTransfer: (transfer: Omit<Transfer, 'id'>) => void;
@@ -91,29 +99,74 @@ export const createAccountSlice: StateCreator<StoreState, [], [], AccountSlice> 
 
   setSelectedAccountId: (id) => set({ selectedAccountId: id }),
 
+  getCreditCardInfo: (accountId) => {
+    const { accounts } = get();
+    const account = accounts.find((a) => a.id === accountId);
+    if (!account || account.type !== 'credit_card') return null;
+
+    const bal = get().getAccountBalance(accountId);
+    const owed = Math.abs(bal); // getAccountBalance returns negative for credit cards
+    const limit = account.creditLimit || 0;
+    const available = Math.max(0, limit - owed);
+    const utilization = limit > 0 ? (owed / limit) * 100 : 0;
+    return { owed, limit, available, utilization };
+  },
+
   getAccountBalance: (accountId) => {
     const { accounts, expenses, incomes, transfers } = get();
     const account = accounts.find((a) => a.id === accountId);
     if (!account) return 0;
 
     const isDefault = account.isDefault;
+    const isCreditCard = account.type === 'credit_card';
+    const convert = get().convertToBase;
+
+    if (isCreditCard) {
+      // Credit card: balance field = initial amount owed (usually 0)
+      // Expenses INCREASE owed amount, payments (transfers TO card) DECREASE it
+      let owed = account.balance; // initial owed
+
+      // Expenses charged to this card increase what's owed
+      expenses.forEach((e) => {
+        if (e.isFixed) return;
+        if (e.accountId === 'none') return;
+        if (e.accountId === accountId) {
+          owed += convert(e.amount, e.currency);
+        }
+      });
+
+      // Transfers TO credit card = payments (reduce owed)
+      // Transfers FROM credit card = refunds/cashback (increase owed... rare)
+      transfers.forEach((t) => {
+        if (t.toAccountId === accountId) {
+          owed -= t.amount; // payment reduces owed
+        }
+        if (t.fromAccountId === accountId) {
+          owed += t.amount; // refund from card increases owed
+        }
+      });
+
+      // Return negative value (it's debt)
+      return -Math.max(0, owed);
+    }
+
+    // Regular account (cash, bank, savings, investment, other)
     let balance = account.balance;
 
-    // Add incomes for this account ('none' = explicitly unlinked, skip)
-    const convert = get().convertToBase;
+    // Add incomes for this account
     incomes.forEach((i) => {
-      if (!i.accountId && !isDefault) return;     // unset → default only
-      if (i.accountId === 'none') return;          // explicitly unlinked
+      if (!i.accountId && !isDefault) return;
+      if (i.accountId === 'none') return;
       if (i.accountId === accountId || (isDefault && !i.accountId)) {
         balance += i.amount;
       }
     });
 
-    // Subtract expenses for this account ('none' = explicitly unlinked, skip)
+    // Subtract expenses for this account
     expenses.forEach((e) => {
-      if (e.isFixed) return;                       // auto-generated from recurring
-      if (!e.accountId && !isDefault) return;      // unset → default only
-      if (e.accountId === 'none') return;           // explicitly unlinked
+      if (e.isFixed) return;
+      if (!e.accountId && !isDefault) return;
+      if (e.accountId === 'none') return;
       if (e.accountId === accountId || (isDefault && !e.accountId)) {
         balance -= convert(e.amount, e.currency);
       }

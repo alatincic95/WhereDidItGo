@@ -41,6 +41,7 @@ export const AccountsScreen: React.FC = () => {
     deleteAccount,
     setDefaultAccount,
     getAccountBalance,
+    getCreditCardInfo,
     transfers,
   } = useExpenseStore();
 
@@ -52,6 +53,7 @@ export const AccountsScreen: React.FC = () => {
   const [selectedColor, setSelectedColor] = useState(BUDGET_COLORS[0]);
   const [selectedIcon, setSelectedIcon] = useState('account-balance');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [creditLimit, setCreditLimit] = useState('');
   const [showTransferModal, setShowTransferModal] = useState(false);
   const [transferFrom, setTransferFrom] = useState('');
   const [transferTo, setTransferTo] = useState('');
@@ -74,6 +76,7 @@ export const AccountsScreen: React.FC = () => {
       setName(account.name);
       setType(account.type);
       setBalance(account.balance.toString());
+      setCreditLimit(account.creditLimit?.toString() || '');
       setSelectedColor(account.color);
       setSelectedIcon(account.icon);
     } else {
@@ -81,6 +84,7 @@ export const AccountsScreen: React.FC = () => {
       setName('');
       setType('bank');
       setBalance('0');
+      setCreditLimit('');
       setSelectedColor(BUDGET_COLORS[0]);
       setSelectedIcon('account-balance');
     }
@@ -89,7 +93,7 @@ export const AccountsScreen: React.FC = () => {
 
   const handleSave = () => {
     if (!name.trim()) return;
-    const data = {
+    const data: any = {
       name: name.trim(),
       type,
       balance: parseFloat(balance) || 0,
@@ -97,6 +101,11 @@ export const AccountsScreen: React.FC = () => {
       icon: selectedIcon,
       isDefault: editingAccount?.isDefault || false,
     };
+    if (type === 'credit_card') {
+      data.creditLimit = parseFloat(creditLimit) || 0;
+    } else {
+      data.creditLimit = undefined;
+    }
     if (editingAccount) {
       updateAccount(editingAccount.id, data);
     } else {
@@ -165,6 +174,7 @@ export const AccountsScreen: React.FC = () => {
         {/* Account Cards */}
         {accounts.map((account) => {
           const bal = getAccountBalance(account.id);
+          const ccInfo = account.type === 'credit_card' ? getCreditCardInfo(account.id) : null;
           return (
             <TouchableOpacity
               key={account.id}
@@ -189,10 +199,42 @@ export const AccountsScreen: React.FC = () => {
                       {ACCOUNT_TYPE_LABELS[account.type]}
                     </Text>
                   </View>
-                  <Text style={[styles.accountBalance, { color: bal >= 0 ? colors.success : colors.danger }]}>
-                    {formatCurrency(bal)}
-                  </Text>
+                  {ccInfo ? (
+                    <View style={{ alignItems: 'flex-end' }}>
+                      <Text style={[styles.accountBalance, { color: colors.danger }]}>
+                        {formatCurrency(ccInfo.owed)}
+                      </Text>
+                      <Text style={[styles.ccSubLabel, { color: colors.textMuted }]}>owed</Text>
+                    </View>
+                  ) : (
+                    <Text style={[styles.accountBalance, { color: bal >= 0 ? colors.success : colors.danger }]}>
+                      {formatCurrency(bal)}
+                    </Text>
+                  )}
                 </View>
+                {ccInfo && ccInfo.limit > 0 && (
+                  <View style={styles.ccInfoRow}>
+                    <View style={[styles.ccBar, { backgroundColor: `${colors.textMuted}15` }]}>
+                      <View
+                        style={[
+                          styles.ccBarFill,
+                          {
+                            width: `${Math.min(ccInfo.utilization, 100)}%`,
+                            backgroundColor: ccInfo.utilization > 90 ? colors.danger : ccInfo.utilization > 70 ? '#FFAA00' : colors.success,
+                          },
+                        ]}
+                      />
+                    </View>
+                    <View style={styles.ccStatsRow}>
+                      <Text style={[styles.ccStatText, { color: colors.success }]}>
+                        {formatCurrency(ccInfo.available)} available
+                      </Text>
+                      <Text style={[styles.ccStatText, { color: colors.textMuted }]}>
+                        {formatCurrency(ccInfo.limit)} limit
+                      </Text>
+                    </View>
+                  </View>
+                )}
               </GlassCard>
             </TouchableOpacity>
           );
@@ -280,7 +322,9 @@ export const AccountsScreen: React.FC = () => {
               })}
             </View>
 
-            <Text style={[styles.modalLabel, { color: colors.textMuted }]}>Initial Balance</Text>
+            <Text style={[styles.modalLabel, { color: colors.textMuted }]}>
+              {type === 'credit_card' ? 'Current Amount Owed' : 'Initial Balance'}
+            </Text>
             <TextInput
               style={[styles.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.textPrimary }]}
               value={balance}
@@ -289,6 +333,20 @@ export const AccountsScreen: React.FC = () => {
               placeholderTextColor={colors.textMuted}
               keyboardType="decimal-pad"
             />
+
+            {type === 'credit_card' && (
+              <>
+                <Text style={[styles.modalLabel, { color: colors.textMuted }]}>Credit Limit</Text>
+                <TextInput
+                  style={[styles.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.textPrimary }]}
+                  value={creditLimit}
+                  onChangeText={setCreditLimit}
+                  placeholder="e.g., 5000"
+                  placeholderTextColor={colors.textMuted}
+                  keyboardType="decimal-pad"
+                />
+              </>
+            )}
 
             <Text style={[styles.modalLabel, { color: colors.textMuted }]}>Color</Text>
             <View style={styles.colorRow}>
@@ -483,6 +541,12 @@ const styles = StyleSheet.create({
   accountName: { fontSize: FONT_SIZE.lg, fontWeight: '600' },
   accountType: { fontSize: FONT_SIZE.sm, marginTop: 2 },
   accountBalance: { fontSize: FONT_SIZE.xl, fontWeight: '700' },
+  ccSubLabel: { fontSize: 11, fontWeight: '600', marginTop: 1 },
+  ccInfoRow: { marginTop: SPACING.sm },
+  ccBar: { height: 6, borderRadius: 3, overflow: 'hidden' },
+  ccBarFill: { height: 6, borderRadius: 3 },
+  ccStatsRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 },
+  ccStatText: { fontSize: 11, fontWeight: '600' },
   defaultBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: BORDER_RADIUS.round },
   defaultBadgeText: { fontSize: FONT_SIZE.xs, fontWeight: '600' },
   sectionTitle: { fontSize: FONT_SIZE.lg, fontWeight: '700', marginTop: SPACING.lg, marginBottom: SPACING.sm },

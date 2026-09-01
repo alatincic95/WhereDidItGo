@@ -4,7 +4,8 @@ export interface Account {
   id: string;
   name: string;
   type: AccountType;
-  balance: number; // initial/seed balance
+  balance: number; // initial/seed balance (for credit_card: initial amount owed)
+  creditLimit?: number; // only for credit_card accounts
   color: string;
   icon: string;
   isDefault: boolean;

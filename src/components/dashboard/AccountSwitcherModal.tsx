@@ -31,6 +31,7 @@ export const AccountSwitcherModal: React.FC<AccountSwitcherModalProps> = ({
   const setSelectedAccountId = useExpenseStore((s) => s.setSelectedAccountId);
   const setDefaultAccount = useExpenseStore((s) => s.setDefaultAccount);
   const getAccountBalance = useExpenseStore((s) => s.getAccountBalance);
+  const getCreditCardInfo = useExpenseStore((s) => s.getCreditCardInfo);
 
   const totalBalance = accounts.reduce((sum, a) => sum + getAccountBalance(a.id), 0);
   const isAllSelected = selectedAccountId === null;
@@ -110,6 +111,7 @@ export const AccountSwitcherModal: React.FC<AccountSwitcherModalProps> = ({
             {/* Individual accounts */}
             {accounts.map((account) => {
               const bal = getAccountBalance(account.id);
+              const ccInfo = account.type === 'credit_card' ? getCreditCardInfo(account.id) : null;
               const isSelected = selectedAccountId === account.id;
               return (
                 <TouchableOpacity
@@ -146,11 +148,21 @@ export const AccountSwitcherModal: React.FC<AccountSwitcherModalProps> = ({
                     </View>
                     <Text style={[styles.accountType, { color: colors.textMuted }]}>
                       {ACCOUNT_TYPE_LABELS[account.type]}
+                      {ccInfo && ccInfo.limit > 0 ? ` · ${formatCurrency(ccInfo.available)} avail` : ''}
                     </Text>
                   </View>
-                  <Text style={[styles.balance, { color: bal >= 0 ? colors.success : colors.danger }]}>
-                    {formatCurrency(bal)}
-                  </Text>
+                  {ccInfo ? (
+                    <View style={{ alignItems: 'flex-end' }}>
+                      <Text style={[styles.balance, { color: colors.danger }]}>
+                        {formatCurrency(ccInfo.owed)}
+                      </Text>
+                      <Text style={{ fontSize: 10, fontWeight: '600', color: colors.textMuted }}>owed</Text>
+                    </View>
+                  ) : (
+                    <Text style={[styles.balance, { color: bal >= 0 ? colors.success : colors.danger }]}>
+                      {formatCurrency(bal)}
+                    </Text>
+                  )}
                 </TouchableOpacity>
               );
             })}
