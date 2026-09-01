@@ -287,6 +287,11 @@ export const ExpenseListScreen: React.FC = () => {
               <MaterialIcons name="push-pin" size={10} color={colors.warning} />
             </View>
           )}
+          {expense.taxDeductible && (
+            <View style={[styles.tagPill, { backgroundColor: `${colors.success}18` }]}>
+              <Text style={[styles.tagPillText, { color: colors.success }]}>Tax</Text>
+            </View>
+          )}
           {expense.tags && expense.tags.length > 0 && expense.tags.slice(0, 2).map((t) => (
             <View key={t} style={[styles.tagPill, { backgroundColor: `${colors.primary}18` }]}>
               <Text style={[styles.tagPillText, { color: colors.primary }]}>#{t}</Text>

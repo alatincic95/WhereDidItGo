@@ -257,6 +257,27 @@ export const SettingsScreen: React.FC = () => {
           </TouchableOpacity>
         </GlassCard>
 
+        {/* Tax Report */}
+        <GlassCard style={styles.card}>
+          <TouchableOpacity
+            style={styles.settingRow}
+            onPress={() => navigation.navigate('TaxReport' as never)}
+          >
+            <View style={styles.settingInfo}>
+              <View style={[styles.settingIcon, { backgroundColor: isDark ? 'rgba(0, 214, 143, 0.12)' : 'rgba(0, 214, 143, 0.08)' }]}>
+                <MaterialIcons name="receipt-long" size={22} color={colors.success} />
+              </View>
+              <View>
+                <Text style={[styles.settingTitle, { color: colors.textPrimary }]}>Tax Report</Text>
+                <Text style={[styles.settingSubtitle, { color: colors.textSecondary }]}>
+                  View and export tax-deductible expenses
+                </Text>
+              </View>
+            </View>
+            <MaterialIcons name="chevron-right" size={22} color={colors.textMuted} />
+          </TouchableOpacity>
+        </GlassCard>
+
         {/* Currency */}
         <GlassCard style={styles.card}>
           <TouchableOpacity

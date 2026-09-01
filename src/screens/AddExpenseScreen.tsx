@@ -86,6 +86,9 @@ export const AddExpenseScreen: React.FC = () => {
   const [newCatColor, setNewCatColor] = useState('#6C63FF');
   const [newCatIcon, setNewCatIcon] = useState('label');
 
+  // Tax deductible
+  const [taxDeductible, setTaxDeductible] = useState(editingExpense?.taxDeductible ?? false);
+
   // Tags
   const [tags, setTags] = useState<string[]>(editingExpense?.tags || []);
   const [tagInput, setTagInput] = useState('');
@@ -210,6 +213,7 @@ export const AddExpenseScreen: React.FC = () => {
       tags: tags.length > 0 ? tags : undefined,
       splits: splits.length > 0 ? splits : undefined,
       accountId: selectedAccountId || undefined,
+      taxDeductible: taxDeductible || undefined,
     };
 
     if (editingExpense) {
@@ -413,6 +417,25 @@ export const AddExpenseScreen: React.FC = () => {
             slideAnim={slideAnim}
           />
 
+          {/* Tax Deductible Toggle */}
+          <TouchableOpacity
+            style={[styles.taxToggle, {
+              backgroundColor: taxDeductible ? `${colors.success}15` : 'transparent',
+              borderColor: taxDeductible ? colors.success : colors.border,
+            }]}
+            activeOpacity={0.7}
+            onPress={() => setTaxDeductible(!taxDeductible)}
+          >
+            <MaterialIcons
+              name={taxDeductible ? 'check-box' : 'check-box-outline-blank'}
+              size={20}
+              color={taxDeductible ? colors.success : colors.textMuted}
+            />
+            <Text style={[styles.taxToggleText, {
+              color: taxDeductible ? colors.success : colors.textSecondary,
+            }]}>Tax Deductible</Text>
+          </TouchableOpacity>
+
           <SplitTransactions
             splits={splits}
             setSplits={setSplits}
@@ -598,6 +621,20 @@ const styles = StyleSheet.create({
   },
 
   // Convert to Recurring
+  taxToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.sm,
+    paddingVertical: SPACING.sm,
+    paddingHorizontal: SPACING.md,
+    borderRadius: BORDER_RADIUS.md,
+    borderWidth: 1,
+    marginTop: SPACING.md,
+  },
+  taxToggleText: {
+    fontSize: FONT_SIZE.sm,
+    fontWeight: '600',
+  },
   convertBtn: {
     flexDirection: 'row',
     alignItems: 'center',

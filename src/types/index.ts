@@ -54,6 +54,7 @@ export interface Expense {
   splits?: ExpenseSplit[]; // optional split across categories/budgets; sum equals amount
   pinned?: boolean; // pinned expenses appear at top of expense list
   accountId?: string; // link to Account
+  taxDeductible?: boolean; // flagged for tax reporting
 }
 
 export interface ExpenseSplit {
