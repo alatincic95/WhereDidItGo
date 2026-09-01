@@ -2,6 +2,7 @@ import { StateCreator } from 'zustand';
 import { Expense, FixedExpense, FixedIncome, Income, Budget, CustomCategory, ExchangeRate, SavingsGoal, BudgetTemplate, CategoryBudget, DashboardCardConfig, DEFAULT_DASHBOARD_CARDS, IncomeSource, YoYMonthData, Account, Transfer, Debt } from '../../types';
 import { DEFAULT_ACCOUNT } from './accountSlice';
 import { CryptoHolding } from './cryptoSlice';
+import { NetWorthItem, NetWorthSnapshot } from './netWorthSlice';
 import { StoreState } from '../useExpenseStore';
 import { computeDueDates, generateRecurringId } from '../../utils/recurringProcessor';
 
@@ -29,6 +30,8 @@ export interface ComputedSlice {
     transfers?: Transfer[];
     cryptoHoldings?: CryptoHolding[];
     debts?: Debt[];
+    netWorthItems?: NetWorthItem[];
+    netWorthSnapshots?: NetWorthSnapshot[];
     initialBalance: number;
     monthlyIncome: number;
     currencySymbol: string;
@@ -49,6 +52,8 @@ export interface ComputedSlice {
     transfers: Transfer[];
     cryptoHoldings: CryptoHolding[];
     debts: Debt[];
+    netWorthItems: NetWorthItem[];
+    netWorthSnapshots: NetWorthSnapshot[];
     initialBalance: number;
     monthlyIncome: number;
     currencySymbol: string;
@@ -241,6 +246,8 @@ export const createComputedSlice: StateCreator<StoreState, [], [], ComputedSlice
       transfers: data.transfers || [],
       cryptoHoldings: data.cryptoHoldings || [],
       debts: data.debts || [],
+      netWorthItems: data.netWorthItems || [],
+      netWorthSnapshots: data.netWorthSnapshots || [],
       initialBalance: data.initialBalance ?? 0,
       monthlyIncome: data.monthlyIncome ?? 0,
       currencySymbol: data.currencySymbol || '$',
@@ -264,6 +271,8 @@ export const createComputedSlice: StateCreator<StoreState, [], [], ComputedSlice
       transfers: s.transfers,
       cryptoHoldings: s.cryptoHoldings,
       debts: s.debts,
+      netWorthItems: s.netWorthItems,
+      netWorthSnapshots: s.netWorthSnapshots,
       initialBalance: s.initialBalance,
       monthlyIncome: s.monthlyIncome,
       currencySymbol: s.currencySymbol,

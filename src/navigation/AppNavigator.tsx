@@ -29,6 +29,8 @@ import { AccountsScreen } from '../screens/AccountsScreen';
 import { CryptoScreen } from '../screens/CryptoScreen';
 import { DebtPayoffScreen } from '../screens/DebtPayoffScreen';
 import { TaxReportScreen } from '../screens/TaxReportScreen';
+import { NetWorthScreen } from '../screens/NetWorthScreen';
+import { CashFlowForecastScreen } from '../screens/CashFlowForecastScreen';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { useTheme } from '../contexts/ThemeContext';
 
@@ -155,6 +157,8 @@ const SafeAccounts = withErrorBoundary(AccountsScreen, 'Accounts');
 const SafeCrypto = withErrorBoundary(CryptoScreen, 'Crypto');
 const SafeDebtPayoff = withErrorBoundary(DebtPayoffScreen, 'Debt Payoff');
 const SafeTaxReport = withErrorBoundary(TaxReportScreen, 'Tax Report');
+const SafeNetWorth = withErrorBoundary(NetWorthScreen, 'Net Worth');
+const SafeCashFlowForecast = withErrorBoundary(CashFlowForecastScreen, 'Cash Flow Forecast');
 
 export function AppNavigator() {
   return (
@@ -300,6 +304,20 @@ export function AppNavigator() {
         <Stack.Screen
           name="TaxReport"
           component={SafeTaxReport}
+          options={{
+            animation: 'slide_from_right',
+          }}
+        />
+        <Stack.Screen
+          name="NetWorth"
+          component={SafeNetWorth}
+          options={{
+            animation: 'slide_from_right',
+          }}
+        />
+        <Stack.Screen
+          name="CashFlowForecast"
+          component={SafeCashFlowForecast}
           options={{
             animation: 'slide_from_right',
           }}

@@ -278,6 +278,48 @@ export const SettingsScreen: React.FC = () => {
           </TouchableOpacity>
         </GlassCard>
 
+        {/* Net Worth */}
+        <GlassCard style={styles.card}>
+          <TouchableOpacity
+            style={styles.settingRow}
+            onPress={() => navigation.navigate('NetWorth' as never)}
+          >
+            <View style={styles.settingInfo}>
+              <View style={[styles.settingIcon, { backgroundColor: isDark ? 'rgba(108, 99, 255, 0.12)' : 'rgba(108, 99, 255, 0.08)' }]}>
+                <MaterialIcons name="assessment" size={22} color={colors.primary} />
+              </View>
+              <View>
+                <Text style={[styles.settingTitle, { color: colors.textPrimary }]}>Net Worth</Text>
+                <Text style={[styles.settingSubtitle, { color: colors.textSecondary }]}>
+                  Track assets, liabilities, and net worth over time
+                </Text>
+              </View>
+            </View>
+            <MaterialIcons name="chevron-right" size={22} color={colors.textMuted} />
+          </TouchableOpacity>
+        </GlassCard>
+
+        {/* Cash Flow Forecast */}
+        <GlassCard style={styles.card}>
+          <TouchableOpacity
+            style={styles.settingRow}
+            onPress={() => navigation.navigate('CashFlowForecast' as never)}
+          >
+            <View style={styles.settingInfo}>
+              <View style={[styles.settingIcon, { backgroundColor: isDark ? 'rgba(69, 183, 209, 0.12)' : 'rgba(69, 183, 209, 0.08)' }]}>
+                <MaterialIcons name="timeline" size={22} color="#45B7D1" />
+              </View>
+              <View>
+                <Text style={[styles.settingTitle, { color: colors.textPrimary }]}>Cash Flow Forecast</Text>
+                <Text style={[styles.settingSubtitle, { color: colors.textSecondary }]}>
+                  Project your balance up to 12 months ahead
+                </Text>
+              </View>
+            </View>
+            <MaterialIcons name="chevron-right" size={22} color={colors.textMuted} />
+          </TouchableOpacity>
+        </GlassCard>
+
         {/* Currency */}
         <GlassCard style={styles.card}>
           <TouchableOpacity

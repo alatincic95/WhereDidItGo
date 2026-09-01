@@ -12,6 +12,7 @@ export { AccountAvatar } from './AccountAvatar';
 export { AccountSwitcherModal } from './AccountSwitcherModal';
 export { ExpenseTemplatesRow } from './ExpenseTemplatesRow';
 export { CryptoSummaryCard } from './CryptoSummaryCard';
+export { SafeToSpendCard } from './SafeToSpendCard';
 export {
   getCurrentMonth,
   getCurrentMonthName,

@@ -35,6 +35,7 @@ import {
   AccountAvatar,
   AccountSwitcherModal,
   CryptoSummaryCard,
+  SafeToSpendCard,
   getCurrentMonth,
   getCurrentMonthName,
   getGreeting,
@@ -292,6 +293,13 @@ export const DashboardScreen: React.FC = () => {
             formatCurrency={formatCurrency}
           />
         </Animated.View>
+
+        {/* Safe to Spend + Age of Money */}
+        {viewMode === 'monthly' && (
+          <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
+            <SafeToSpendCard currentMonth={currentMonth} />
+          </Animated.View>
+        )}
 
         {/* Quick Add Bar */}
         <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
