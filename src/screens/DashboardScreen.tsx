@@ -56,6 +56,7 @@ export const DashboardScreen: React.FC = () => {
   const [newRateCurrency, setNewRateCurrency] = useState('');
   const [newRateValue, setNewRateValue] = useState('');
   const [backupMenuOpen, setBackupMenuOpen] = useState(false);
+  const [insightsExpanded, setInsightsExpanded] = useState(false);
   const [accountSwitcherOpen, setAccountSwitcherOpen] = useState(false);
   const [hamburgerOpen, setHamburgerOpen] = useState(false);
   const [restoreConfirmOpen, setRestoreConfirmOpen] = useState(false);
@@ -325,30 +326,46 @@ export const DashboardScreen: React.FC = () => {
           const insights = generateSpendingInsights(expenses, fixedExpenses, monthlyIncome, currencySymbol);
           if (insights.length === 0) return null;
           return (
-            <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
-              <GlassCard style={{ marginBottom: SPACING.md }} glowColor={COLORS.primary} intensity="low">
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: SPACING.sm, marginBottom: SPACING.sm }}>
-                  <MaterialIcons name="lightbulb" size={18} color={colors.warning} />
-                  <Text style={{ fontSize: FONT_SIZE.sm, fontWeight: '700', color: colors.textMuted, letterSpacing: 1, textTransform: 'uppercase' }}>
-                    Insights
-                  </Text>
-                </View>
-                {insights.slice(0, 3).map((insight) => (
-                  <View key={insight.id} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: SPACING.sm, marginBottom: SPACING.sm }}>
-                    <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: `${insight.color}18`, justifyContent: 'center', alignItems: 'center' }}>
-                      <MaterialIcons name={insight.icon as any} size={16} color={insight.color} />
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={{ fontSize: FONT_SIZE.sm, fontWeight: '700', color: colors.textPrimary, marginBottom: 2 }}>
-                        {insight.title}
-                      </Text>
-                      <Text style={{ fontSize: FONT_SIZE.sm, color: colors.textSecondary, lineHeight: 18 }}>
-                        {insight.message}
-                      </Text>
-                    </View>
+            <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }], marginBottom: SPACING.md }}>
+              <View style={{ backgroundColor: colors.surface, borderRadius: BORDER_RADIUS.lg, borderWidth: 1, borderColor: colors.border, overflow: 'hidden' }}>
+                <TouchableOpacity
+                  style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: SPACING.md }}
+                  activeOpacity={0.7}
+                  onPress={() => setInsightsExpanded(!insightsExpanded)}
+                >
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <MaterialIcons name="lightbulb" size={18} color={colors.warning} />
+                    <Text style={{ fontSize: FONT_SIZE.md, fontWeight: '700', color: colors.textPrimary }}>
+                      Insights
+                    </Text>
+                    {!insightsExpanded && (
+                      <View style={{ paddingHorizontal: 8, paddingVertical: 2, borderRadius: BORDER_RADIUS.round, backgroundColor: `${colors.warning}20` }}>
+                        <Text style={{ fontSize: 12, fontWeight: '700', color: colors.warning }}>{insights.length}</Text>
+                      </View>
+                    )}
                   </View>
-                ))}
-              </GlassCard>
+                  <MaterialIcons name={insightsExpanded ? 'expand-less' : 'expand-more'} size={24} color={colors.textMuted} />
+                </TouchableOpacity>
+                {insightsExpanded && (
+                  <View style={{ paddingHorizontal: SPACING.md, paddingBottom: SPACING.md }}>
+                    {insights.slice(0, 3).map((insight, index) => (
+                      <View key={insight.id} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: SPACING.sm, paddingVertical: SPACING.sm, borderTopWidth: index === 0 ? 1 : 0, borderTopColor: colors.border }}>
+                        <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: `${insight.color}18`, justifyContent: 'center', alignItems: 'center' }}>
+                          <MaterialIcons name={insight.icon as any} size={16} color={insight.color} />
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={{ fontSize: FONT_SIZE.sm, fontWeight: '700', color: colors.textPrimary, marginBottom: 2 }}>
+                            {insight.title}
+                          </Text>
+                          <Text style={{ fontSize: FONT_SIZE.sm, color: colors.textSecondary, lineHeight: 18 }}>
+                            {insight.message}
+                          </Text>
+                        </View>
+                      </View>
+                    ))}
+                  </View>
+                )}
+              </View>
             </Animated.View>
           );
         })()}
