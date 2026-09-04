@@ -15,7 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../contexts/ThemeContext';
 import { useExpenseStore } from '../store/useExpenseStore';
-import { signIn, signUp } from '../services/firebase';
+import { signIn, signUp, isFirebaseAvailable } from '../services/firebase';
 import { SPACING, FONT_SIZE, BORDER_RADIUS, COLORS } from '../constants/theme';
 
 export const AuthScreen: React.FC = () => {
@@ -30,6 +30,7 @@ export const AuthScreen: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
+  const firebaseReady = isFirebaseAvailable();
 
   const handleSubmit = async () => {
     setError(null);
@@ -119,6 +120,16 @@ export const AuthScreen: React.FC = () => {
                 : 'Sign in to your account'}
             </Text>
           </View>
+
+          {/* Firebase not configured notice */}
+          {!firebaseReady && (
+            <View style={[styles.errorBox, { backgroundColor: `${colors.warning}15`, marginBottom: SPACING.md }]}>
+              <MaterialIcons name="warning" size={16} color={colors.warning} />
+              <Text style={[styles.errorText, { color: colors.warning }]}>
+                Firebase is not configured yet. Authentication requires a native build. See FIREBASE_SETUP.md for instructions.
+              </Text>
+            </View>
+          )}
 
           {/* Form */}
           <View style={styles.form}>

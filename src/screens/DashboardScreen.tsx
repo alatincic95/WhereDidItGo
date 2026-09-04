@@ -306,6 +306,13 @@ export const DashboardScreen: React.FC = () => {
           <QuickAddBar />
         </Animated.View>
 
+        {/* Quick Actions — always visible below Quick Add */}
+        <Animated.View
+          style={[styles.quickActionsRow, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}
+        >
+          <QuickActionsRow navigation={navigation} />
+        </Animated.View>
+
         {/* Expense Templates */}
         <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
           <ExpenseTemplatesRow />
@@ -418,14 +425,8 @@ export const DashboardScreen: React.FC = () => {
                 </Animated.View>
               );
             case 'quickActions':
-              return (
-                <Animated.View
-                  key="quickActions"
-                  style={[styles.quickActionsRow, { opacity: cardFades[animIdx], transform: [{ translateY: cardSlides[animIdx] }] }]}
-                >
-                  <QuickActionsRow navigation={navigation} />
-                </Animated.View>
-              );
+              // Quick Actions moved above customizable cards (always visible below Quick Add)
+              return null;
             case 'recentTransactions':
               return (
                 <Animated.View key="recentTransactions" style={{ opacity: cardFades[animIdx], transform: [{ translateY: cardSlides[animIdx] }] }}>
