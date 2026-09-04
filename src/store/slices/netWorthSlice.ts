@@ -51,6 +51,7 @@ export interface NetWorthItem {
 }
 
 export interface NetWorthSnapshot {
+  id?: string;
   month: string; // YYYY-MM
   totalAssets: number;
   totalLiabilities: number;
@@ -109,7 +110,7 @@ export const createNetWorthSlice: StateCreator<StoreState, [], [], NetWorthSlice
       return {
         netWorthSnapshots: [
           ...filtered,
-          { month, totalAssets, totalLiabilities, netWorth, takenAt: now.toISOString() },
+          { id: uuidv4(), month, totalAssets, totalLiabilities, netWorth, takenAt: now.toISOString() },
         ].sort((a, b) => a.month.localeCompare(b.month)),
       };
     });

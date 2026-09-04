@@ -17,13 +17,15 @@ export interface SavingsSlice {
 export const createSavingsSlice: StateCreator<StoreState, [], [], SavingsSlice> = (set, get) => ({
   savingsGoals: [],
 
-  addSavingsGoal: (goal) =>
+  addSavingsGoal: (goal) => {
+    const now = new Date().toISOString();
     set((state) => ({
       savingsGoals: [
-        { ...goal, id: uuidv4(), createdAt: new Date().toISOString() },
+        { ...goal, id: uuidv4(), createdAt: now, updatedAt: now },
         ...state.savingsGoals,
       ],
-    })),
+    }));
+  },
 
   addSavingsGoalWithId: (goal) =>
     set((state) => ({
@@ -33,7 +35,7 @@ export const createSavingsSlice: StateCreator<StoreState, [], [], SavingsSlice> 
   updateSavingsGoal: (id, updates) =>
     set((state) => ({
       savingsGoals: state.savingsGoals.map((g) =>
-        g.id === id ? { ...g, ...updates } : g
+        g.id === id ? { ...g, ...updates, updatedAt: new Date().toISOString() } : g
       ),
     })),
 
@@ -45,7 +47,7 @@ export const createSavingsSlice: StateCreator<StoreState, [], [], SavingsSlice> 
   addToSavingsGoal: (id, amount) =>
     set((state) => ({
       savingsGoals: state.savingsGoals.map((g) =>
-        g.id === id ? { ...g, currentAmount: g.currentAmount + amount } : g
+        g.id === id ? { ...g, currentAmount: g.currentAmount + amount, updatedAt: new Date().toISOString() } : g
       ),
     })),
 

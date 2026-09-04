@@ -112,10 +112,12 @@ export const createExpenseSlice: StateCreator<StoreState, [], [], ExpenseSlice> 
 
   expenseTemplates: [],
 
-  addExpense: (expense) =>
+  addExpense: (expense) => {
+    const now = new Date().toISOString();
     set((state) => ({
-      expenses: [{ ...expense, id: uuidv4() }, ...state.expenses],
-    })),
+      expenses: [{ ...expense, id: uuidv4(), createdAt: now, updatedAt: now }, ...state.expenses],
+    }));
+  },
 
   addExpenseWithId: (expense) =>
     set((state) => ({
@@ -125,7 +127,7 @@ export const createExpenseSlice: StateCreator<StoreState, [], [], ExpenseSlice> 
   updateExpense: (id, updates) =>
     set((state) => ({
       expenses: state.expenses.map((e) =>
-        e.id === id ? { ...e, ...updates } : e
+        e.id === id ? { ...e, ...updates, updatedAt: new Date().toISOString() } : e
       ),
     })),
 
@@ -137,14 +139,14 @@ export const createExpenseSlice: StateCreator<StoreState, [], [], ExpenseSlice> 
   markExpenseCompleted: (id) =>
     set((state) => ({
       expenses: state.expenses.map((e) =>
-        e.id === id ? { ...e, isPending: false } : e
+        e.id === id ? { ...e, isPending: false, updatedAt: new Date().toISOString() } : e
       ),
     })),
 
   togglePinExpense: (id) =>
     set((state) => ({
       expenses: state.expenses.map((e) =>
-        e.id === id ? { ...e, pinned: !e.pinned } : e
+        e.id === id ? { ...e, pinned: !e.pinned, updatedAt: new Date().toISOString() } : e
       ),
     })),
 
@@ -168,15 +170,17 @@ export const createExpenseSlice: StateCreator<StoreState, [], [], ExpenseSlice> 
     return Array.from(tagSet).sort();
   },
 
-  addFixedExpense: (expense) =>
+  addFixedExpense: (expense) => {
+    const now = new Date().toISOString();
     set((state) => ({
-      fixedExpenses: [{ ...expense, id: uuidv4(), startDate: new Date().toISOString().slice(0, 10) }, ...state.fixedExpenses],
-    })),
+      fixedExpenses: [{ ...expense, id: uuidv4(), startDate: now.slice(0, 10), createdAt: now, updatedAt: now }, ...state.fixedExpenses],
+    }));
+  },
 
   updateFixedExpense: (id, updates) =>
     set((state) => ({
       fixedExpenses: state.fixedExpenses.map((e) =>
-        e.id === id ? { ...e, ...updates } : e
+        e.id === id ? { ...e, ...updates, updatedAt: new Date().toISOString() } : e
       ),
     })),
 
@@ -185,13 +189,15 @@ export const createExpenseSlice: StateCreator<StoreState, [], [], ExpenseSlice> 
       fixedExpenses: state.fixedExpenses.filter((e) => e.id !== id),
     })),
 
-  addExpenseTemplate: (template) =>
+  addExpenseTemplate: (template) => {
+    const now = new Date().toISOString();
     set((state) => ({
       expenseTemplates: [
-        { ...template, id: uuidv4(), createdAt: new Date().toISOString() },
+        { ...template, id: uuidv4(), createdAt: now, updatedAt: now },
         ...state.expenseTemplates,
       ],
-    })),
+    }));
+  },
 
   deleteExpenseTemplate: (id) =>
     set((state) => ({

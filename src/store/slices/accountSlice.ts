@@ -46,18 +46,20 @@ export const createAccountSlice: StateCreator<StoreState, [], [], AccountSlice> 
   transfers: [],
   selectedAccountId: null,
 
-  addAccount: (account) =>
+  addAccount: (account) => {
+    const now = new Date().toISOString();
     set((state) => ({
       accounts: [
         ...state.accounts,
-        { ...account, id: uuidv4(), createdAt: new Date().toISOString() },
+        { ...account, id: uuidv4(), createdAt: now, updatedAt: now },
       ],
-    })),
+    }));
+  },
 
   updateAccount: (id, updates) =>
     set((state) => ({
       accounts: state.accounts.map((a) =>
-        a.id === id ? { ...a, ...updates } : a
+        a.id === id ? { ...a, ...updates, updatedAt: new Date().toISOString() } : a
       ),
     })),
 
@@ -185,15 +187,17 @@ export const createAccountSlice: StateCreator<StoreState, [], [], AccountSlice> 
     return balance;
   },
 
-  addTransfer: (transfer) =>
+  addTransfer: (transfer) => {
+    const now = new Date().toISOString();
     set((state) => ({
-      transfers: [{ ...transfer, id: uuidv4() }, ...state.transfers],
-    })),
+      transfers: [{ ...transfer, id: uuidv4(), createdAt: now, updatedAt: now }, ...state.transfers],
+    }));
+  },
 
   updateTransfer: (id, updates) =>
     set((state) => ({
       transfers: state.transfers.map((t) =>
-        t.id === id ? { ...t, ...updates } : t
+        t.id === id ? { ...t, ...updates, updatedAt: new Date().toISOString() } : t
       ),
     })),
 

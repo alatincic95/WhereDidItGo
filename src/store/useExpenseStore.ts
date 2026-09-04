@@ -13,6 +13,7 @@ import { AccountSlice, createAccountSlice } from './slices/accountSlice';
 import { CryptoSlice, createCryptoSlice } from './slices/cryptoSlice';
 import { DebtSlice, createDebtSlice } from './slices/debtSlice';
 import { NetWorthSlice, createNetWorthSlice } from './slices/netWorthSlice';
+import { AuthSlice, createAuthSlice } from './slices/authSlice';
 
 export type StoreState = ExpenseSlice &
   IncomeSlice &
@@ -23,7 +24,8 @@ export type StoreState = ExpenseSlice &
   AccountSlice &
   CryptoSlice &
   DebtSlice &
-  NetWorthSlice;
+  NetWorthSlice &
+  AuthSlice;
 
 export const useExpenseStore = create<StoreState>()(
   persist(
@@ -38,6 +40,7 @@ export const useExpenseStore = create<StoreState>()(
       ...createCryptoSlice(set, get, api),
       ...createDebtSlice(set, get, api),
       ...createNetWorthSlice(set, get, api),
+      ...createAuthSlice(set, get, api),
     }),
     {
       name: 'expense-store',
@@ -79,6 +82,8 @@ export const useExpenseStore = create<StoreState>()(
         debtStrategy: state.debtStrategy,
         netWorthItems: state.netWorthItems,
         netWorthSnapshots: state.netWorthSnapshots,
+        userId: state.userId,
+        userEmail: state.userEmail,
       }),
       migrate: (persistedState: any, version: number) => {
         // v0 → v1: rename projects to budgets
@@ -112,9 +117,14 @@ export const useExpenseStore = create<StoreState>()(
           }
           if (!persistedState.transfers) persistedState.transfers = [];
         }
+        // v2 → v3: auth fields + timestamps (all optional, no data changes needed)
+        if (version < 3) {
+          if (persistedState.userId === undefined) persistedState.userId = null;
+          if (persistedState.userEmail === undefined) persistedState.userEmail = null;
+        }
         return persistedState;
       },
-      version: 2,
+      version: 3,
     }
   )
 );

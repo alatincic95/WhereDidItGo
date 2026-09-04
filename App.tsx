@@ -15,6 +15,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { scheduleBillReminders, scheduleMonthlyRecap, scheduleBackupReminder, scheduleDueDateReminders } from './src/utils/localNotifications';
 import { buildWidgetData, syncWidgetData } from './src/utils/widgetData';
 import { performAutoBackup, rotateBackups, shouldAutoBackup } from './src/utils/autoBackup';
+import { onAuthStateChanged } from './src/services/firebase';
 
 const LOCK_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
 
@@ -109,8 +110,28 @@ function OnboardingGate({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+function useFirebaseAuth() {
+  const setAuthUser = useExpenseStore((s) => s.setAuthUser);
+  useEffect(() => {
+    try {
+      const unsubscribe = onAuthStateChanged((user) => {
+        if (user) {
+          setAuthUser(user.uid, user.email);
+        } else {
+          setAuthUser(null, null);
+        }
+      });
+      return unsubscribe;
+    } catch {
+      // Firebase not configured yet — skip auth listener
+      return undefined;
+    }
+  }, []);
+}
+
 function AppContent() {
   const { isDark } = useTheme();
+  useFirebaseAuth();
   const processAutoContributions = useExpenseStore((s) => s.processAutoContributions);
   const processRecurringExpenses = useExpenseStore((s) => s.processRecurringExpenses);
   const processRollovers = useExpenseStore((s) => s.processRollovers);

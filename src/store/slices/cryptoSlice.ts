@@ -10,6 +10,7 @@ export interface CryptoHolding {
   name: string; // e.g. 'Bitcoin'
   amount: number; // how many coins the user holds
   createdAt: string;
+  updatedAt?: string;
 }
 
 export interface CryptoPriceCache {
@@ -45,7 +46,7 @@ export const createCryptoSlice: StateCreator<StoreState, [], [], CryptoSlice> = 
   addCryptoHolding: (holding) =>
     set((state) => ({
       cryptoHoldings: [
-        { ...holding, id: uuidv4(), createdAt: new Date().toISOString() },
+        { ...holding, id: uuidv4(), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
         ...state.cryptoHoldings,
       ],
     })),
@@ -53,7 +54,7 @@ export const createCryptoSlice: StateCreator<StoreState, [], [], CryptoSlice> = 
   updateCryptoHolding: (id, updates) =>
     set((state) => ({
       cryptoHoldings: state.cryptoHoldings.map((h) =>
-        h.id === id ? { ...h, ...updates } : h
+        h.id === id ? { ...h, ...updates, updatedAt: new Date().toISOString() } : h
       ),
     })),
 

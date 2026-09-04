@@ -3,6 +3,7 @@ import { ExchangeRate, CustomCategory, CategoryBudget, DashboardCardConfig, DEFA
 import { DEFAULT_ACCOUNT } from './accountSlice';
 import { ThemeMode } from '../../constants/theme';
 import { StoreState } from '../useExpenseStore';
+import { uuidv4 } from '../utils';
 
 export interface SettingsSlice {
   initialBalance: number;
@@ -101,13 +102,13 @@ export const createSettingsSlice: StateCreator<StoreState, [], [], SettingsSlice
   // Exchange Rate Actions
   addExchangeRate: (rate) =>
     set((state) => ({
-      exchangeRates: [...state.exchangeRates.filter((r) => r.from !== rate.from), rate],
+      exchangeRates: [...state.exchangeRates.filter((r) => r.from !== rate.from), { ...rate, updatedAt: new Date().toISOString() }],
     })),
 
   updateExchangeRate: (from, rate) =>
     set((state) => ({
       exchangeRates: state.exchangeRates.map((r) =>
-        r.from === from ? { ...r, rate } : r
+        r.from === from ? { ...r, rate, updatedAt: new Date().toISOString() } : r
       ),
     })),
 
@@ -124,10 +125,12 @@ export const createSettingsSlice: StateCreator<StoreState, [], [], SettingsSlice
   },
 
   // Custom Categories
-  addCustomCategory: (category) =>
+  addCustomCategory: (category) => {
+    const now = new Date().toISOString();
     set((state) => ({
-      customCategories: [...state.customCategories, category],
-    })),
+      customCategories: [...state.customCategories, { ...category, id: uuidv4(), createdAt: now, updatedAt: now }],
+    }));
+  },
 
   deleteCustomCategory: (name) =>
     set((state) => ({
@@ -153,16 +156,17 @@ export const createSettingsSlice: StateCreator<StoreState, [], [], SettingsSlice
   // Category Budgets
   setCategoryBudget: (category, monthlyLimit) =>
     set((state) => {
+      const now = new Date().toISOString();
       const existing = state.categoryBudgets.find((b) => b.category === category);
       if (existing) {
         return {
           categoryBudgets: state.categoryBudgets.map((b) =>
-            b.category === category ? { ...b, monthlyLimit } : b
+            b.category === category ? { ...b, monthlyLimit, updatedAt: now } : b
           ),
         };
       }
       return {
-        categoryBudgets: [...state.categoryBudgets, { category, monthlyLimit, enabled: true }],
+        categoryBudgets: [...state.categoryBudgets, { id: uuidv4(), category, monthlyLimit, enabled: true, createdAt: now, updatedAt: now }],
       };
     }),
 
@@ -174,14 +178,14 @@ export const createSettingsSlice: StateCreator<StoreState, [], [], SettingsSlice
   toggleCategoryBudget: (category) =>
     set((state) => ({
       categoryBudgets: state.categoryBudgets.map((b) =>
-        b.category === category ? { ...b, enabled: !b.enabled } : b
+        b.category === category ? { ...b, enabled: !b.enabled, updatedAt: new Date().toISOString() } : b
       ),
     })),
 
   toggleCategoryBudgetRollover: (category) =>
     set((state) => ({
       categoryBudgets: state.categoryBudgets.map((b) =>
-        b.category === category ? { ...b, rolloverEnabled: !b.rolloverEnabled } : b
+        b.category === category ? { ...b, rolloverEnabled: !b.rolloverEnabled, updatedAt: new Date().toISOString() } : b
       ),
     })),
 

@@ -22,6 +22,7 @@ import { SPACING, FONT_SIZE, BORDER_RADIUS } from '../constants/theme';
 import { requestPermissions, cancelAllScheduled } from '../utils/localNotifications';
 import { getApiKey, setApiKey, removeApiKey, maskApiKey } from '../assistant/config';
 import { syncExchangeRates } from '../utils/currencyFetch';
+import { signOut as firebaseSignOut } from '../services/firebase';
 
 export const SettingsScreen: React.FC = () => {
   const navigation = useNavigation();
@@ -46,6 +47,9 @@ export const SettingsScreen: React.FC = () => {
   const fixedIncomesTotal = useExpenseStore((s) => s.getFixedIncomesTotal());
   const reminderLeadDays = useExpenseStore((s) => s.reminderLeadDays);
   const setReminderLeadDays = useExpenseStore((s) => s.setReminderLeadDays);
+  const isSignedIn = useExpenseStore((s) => s.isSignedIn);
+  const userEmail = useExpenseStore((s) => s.userEmail);
+  const clearAuth = useExpenseStore((s) => s.clearAuth);
   const [biometricAvailable, setBiometricAvailable] = useState(false);
   const [biometricType, setBiometricType] = useState('Biometrics');
   const [apiKeyValue, setApiKeyValue] = useState('');
@@ -119,6 +123,15 @@ export const SettingsScreen: React.FC = () => {
     }
   };
 
+  const handleSignOut = async () => {
+    try {
+      await firebaseSignOut();
+    } catch {
+      // Firebase may not be initialized; still clear local state
+    }
+    clearAuth();
+  };
+
   const handlePushToggle = async (value: boolean) => {
     if (value) {
       const granted = await requestPermissions();
@@ -142,6 +155,57 @@ export const SettingsScreen: React.FC = () => {
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        {/* Account */}
+        <Text style={[styles.sectionLabel, { color: colors.textMuted }]}>ACCOUNT</Text>
+        {isSignedIn ? (
+          <>
+            <GlassCard style={styles.card}>
+              <View style={styles.settingRow}>
+                <View style={styles.settingInfo}>
+                  <View style={[styles.settingIcon, { backgroundColor: 'rgba(0, 214, 143, 0.12)' }]}>
+                    <MaterialIcons name="check-circle" size={22} color={colors.success} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.settingTitle, { color: colors.textPrimary }]}>Signed In</Text>
+                    <Text style={[styles.settingSubtitle, { color: colors.textSecondary }]} numberOfLines={1}>
+                      {userEmail || 'Unknown email'}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+            </GlassCard>
+            <GlassCard style={styles.card}>
+              <TouchableOpacity style={styles.settingRow} onPress={handleSignOut}>
+                <View style={styles.settingInfo}>
+                  <View style={[styles.settingIcon, { backgroundColor: `${colors.danger}15` }]}>
+                    <MaterialIcons name="logout" size={22} color={colors.danger} />
+                  </View>
+                  <Text style={[styles.settingTitle, { color: colors.danger }]}>Sign Out</Text>
+                </View>
+                <MaterialIcons name="chevron-right" size={22} color={colors.textMuted} />
+              </TouchableOpacity>
+            </GlassCard>
+          </>
+        ) : (
+          <GlassCard style={styles.card}>
+            <TouchableOpacity
+              style={styles.settingRow}
+              onPress={() => (navigation as any).navigate('Auth')}
+            >
+              <View style={styles.settingInfo}>
+                <View style={[styles.settingIcon, { backgroundColor: `${colors.primary}15` }]}>
+                  <MaterialIcons name="person" size={22} color={colors.primary} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.settingTitle, { color: colors.textPrimary }]}>Sign In / Create Account</Text>
+                  <Text style={[styles.settingSubtitle, { color: colors.textSecondary }]}>Optional - prepares for cloud sync</Text>
+                </View>
+              </View>
+              <MaterialIcons name="chevron-right" size={22} color={colors.textMuted} />
+            </TouchableOpacity>
+          </GlassCard>
+        )}
+
         {/* Appearance */}
         <Text style={[styles.sectionLabel, { color: colors.textMuted }]}>APPEARANCE</Text>
         <GlassCard style={styles.card}>

@@ -27,10 +27,12 @@ export const createIncomeSlice: StateCreator<StoreState, [], [], IncomeSlice> = 
   incomes: [],
   fixedIncomes: [],
 
-  addIncome: (income) =>
+  addIncome: (income) => {
+    const now = new Date().toISOString();
     set((state) => ({
-      incomes: [{ ...income, id: uuidv4() }, ...state.incomes],
-    })),
+      incomes: [{ ...income, id: uuidv4(), createdAt: now, updatedAt: now }, ...state.incomes],
+    }));
+  },
 
   addIncomeWithId: (income) =>
     set((state) => ({
@@ -40,7 +42,7 @@ export const createIncomeSlice: StateCreator<StoreState, [], [], IncomeSlice> = 
   updateIncome: (id, updates) =>
     set((state) => ({
       incomes: state.incomes.map((i) =>
-        i.id === id ? { ...i, ...updates } : i
+        i.id === id ? { ...i, ...updates, updatedAt: new Date().toISOString() } : i
       ),
     })),
 
@@ -49,15 +51,17 @@ export const createIncomeSlice: StateCreator<StoreState, [], [], IncomeSlice> = 
       incomes: state.incomes.filter((i) => i.id !== id),
     })),
 
-  addFixedIncome: (income) =>
+  addFixedIncome: (income) => {
+    const now = new Date().toISOString();
     set((state) => ({
-      fixedIncomes: [{ ...income, id: uuidv4(), startDate: new Date().toISOString().slice(0, 10) }, ...state.fixedIncomes],
-    })),
+      fixedIncomes: [{ ...income, id: uuidv4(), startDate: now.slice(0, 10), createdAt: now, updatedAt: now }, ...state.fixedIncomes],
+    }));
+  },
 
   updateFixedIncome: (id, updates) =>
     set((state) => ({
       fixedIncomes: state.fixedIncomes.map((i) =>
-        i.id === id ? { ...i, ...updates } : i
+        i.id === id ? { ...i, ...updates, updatedAt: new Date().toISOString() } : i
       ),
     })),
 

@@ -47,13 +47,15 @@ export const createBudgetSlice: StateCreator<StoreState, [], [], BudgetSlice> = 
 
   budgetTemplates: [],
 
-  addBudget: (budget) =>
+  addBudget: (budget) => {
+    const now = new Date().toISOString();
     set((state) => ({
       budgets: [
-        { ...budget, id: uuidv4(), createdAt: new Date().toISOString() },
+        { ...budget, id: uuidv4(), createdAt: now, updatedAt: now },
         ...state.budgets,
       ],
-    })),
+    }));
+  },
 
   addBudgetWithId: (budget) =>
     set((state) => ({
@@ -63,7 +65,7 @@ export const createBudgetSlice: StateCreator<StoreState, [], [], BudgetSlice> = 
   updateBudget: (id, updates) =>
     set((state) => ({
       budgets: state.budgets.map((p) =>
-        p.id === id ? { ...p, ...updates } : p
+        p.id === id ? { ...p, ...updates, updatedAt: new Date().toISOString() } : p
       ),
     })),
 
@@ -118,13 +120,15 @@ export const createBudgetSlice: StateCreator<StoreState, [], [], BudgetSlice> = 
       }, 0);
   },
 
-  addBudgetTemplate: (template) =>
+  addBudgetTemplate: (template) => {
+    const now = new Date().toISOString();
     set((state) => ({
       budgetTemplates: [
-        { ...template, id: uuidv4(), createdAt: new Date().toISOString() },
+        { ...template, id: uuidv4(), createdAt: now, updatedAt: now },
         ...state.budgetTemplates,
       ],
-    })),
+    }));
+  },
 
   deleteBudgetTemplate: (id) =>
     set((state) => ({

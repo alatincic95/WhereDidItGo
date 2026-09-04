@@ -10,6 +10,7 @@ export interface Account {
   icon: string;
   isDefault: boolean;
   createdAt: string;
+  updatedAt?: string;
 }
 
 export const ACCOUNT_TYPE_LABELS: Record<AccountType, string> = {
@@ -38,6 +39,8 @@ export interface Transfer {
   description?: string;
   date: string; // ISO date string
   currency?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface Expense {
@@ -56,6 +59,8 @@ export interface Expense {
   pinned?: boolean; // pinned expenses appear at top of expense list
   accountId?: string; // link to Account
   taxDeductible?: boolean; // flagged for tax reporting
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface ExpenseSplit {
@@ -65,8 +70,10 @@ export interface ExpenseSplit {
 }
 
 export interface ExchangeRate {
+  id?: string;
   from: string; // e.g. 'EUR'
   rate: number; // how many base currency units per 1 unit of 'from'
+  updatedAt?: string;
 }
 
 export type BudgetStatus = 'active' | 'completed';
@@ -79,6 +86,7 @@ export interface Budget {
   color: string;
   status: BudgetStatus;
   createdAt: string; // ISO date string
+  updatedAt?: string;
 }
 
 // Notifications
@@ -102,6 +110,7 @@ export interface AppNotification {
   color: string;
   read: boolean;
   createdAt: string;
+  updatedAt?: string;
   relatedId?: string; // projectId, expenseId, etc.
 }
 
@@ -139,6 +148,8 @@ export interface Income {
   description: string;
   date: string; // ISO date string
   accountId?: string; // link to Account
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export type IncomeSource =
@@ -181,18 +192,24 @@ export const INCOME_SOURCE_COLORS: Record<IncomeSource, string> = {
 };
 
 export interface CustomCategory {
+  id?: string;
   name: string;
   icon: string;
   color: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface CategoryBudget {
+  id?: string;
   category: string;       // matches ExpenseCategory or CustomCategory.name
   monthlyLimit: number;   // spending cap in base currency
   enabled: boolean;       // toggle without deleting
   rolloverEnabled?: boolean;  // if true, unused budget carries to next month
   rolloverAmount?: number;    // accumulated rollover from previous months
   lastRolloverMonth?: string; // YYYY-MM of last rollover computation
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export type RecurringFrequency = 'weekly' | 'biweekly' | 'monthly' | 'quarterly' | 'yearly';
@@ -223,6 +240,8 @@ export interface FixedExpense {
   lastProcessedDate?: string; // YYYY-MM-DD of last auto-generated expense
   paused?: boolean; // if true, skip auto-processing and balance calculations
   dueDay?: number; // 1-31, day of month when this bill is due
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface FixedIncome {
@@ -235,6 +254,8 @@ export interface FixedIncome {
   lastProcessedDate?: string; // YYYY-MM-DD of last auto-generated income
   paused?: boolean; // if true, skip auto-processing and balance calculations
   dueDay?: number; // 1-31, day of month when this payment is expected
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface SavingsGoal {
@@ -248,6 +269,7 @@ export interface SavingsGoal {
   createdAt: string;
   autoContributionMonthly?: number; // optional auto-allocation per month (base currency)
   lastAutoContribution?: string; // YYYY-MM of the last processed auto-contribution
+  updatedAt?: string;
 }
 
 export interface ExpenseTemplate {
@@ -260,6 +282,7 @@ export interface ExpenseTemplate {
   tags?: string[];
   icon: string;
   createdAt: string;
+  updatedAt?: string;
 }
 
 export interface BudgetTemplate {
@@ -270,6 +293,7 @@ export interface BudgetTemplate {
   color: string;
   icon: string;
   createdAt: string;
+  updatedAt?: string;
 }
 
 // ── Debt Payoff ──────────────────────────────────────────────────────
@@ -314,6 +338,7 @@ export interface Debt {
   interestRate: number;     // annual percentage rate (APR), e.g. 19.99
   minimumPayment: number;   // minimum monthly payment
   createdAt: string;
+  updatedAt?: string;
 }
 
 export type PayoffStrategy = 'avalanche' | 'snowball';

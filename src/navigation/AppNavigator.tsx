@@ -31,6 +31,7 @@ import { DebtPayoffScreen } from '../screens/DebtPayoffScreen';
 import { TaxReportScreen } from '../screens/TaxReportScreen';
 import { NetWorthScreen } from '../screens/NetWorthScreen';
 import { CashFlowForecastScreen } from '../screens/CashFlowForecastScreen';
+import { AuthScreen } from '../screens/AuthScreen';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { useTheme } from '../contexts/ThemeContext';
 
@@ -159,6 +160,7 @@ const SafeDebtPayoff = withErrorBoundary(DebtPayoffScreen, 'Debt Payoff');
 const SafeTaxReport = withErrorBoundary(TaxReportScreen, 'Tax Report');
 const SafeNetWorth = withErrorBoundary(NetWorthScreen, 'Net Worth');
 const SafeCashFlowForecast = withErrorBoundary(CashFlowForecastScreen, 'Cash Flow Forecast');
+const SafeAuth = withErrorBoundary(AuthScreen, 'Authentication');
 
 export function AppNavigator() {
   return (
@@ -320,6 +322,14 @@ export function AppNavigator() {
           component={SafeCashFlowForecast}
           options={{
             animation: 'slide_from_right',
+          }}
+        />
+        <Stack.Screen
+          name="Auth"
+          component={SafeAuth}
+          options={{
+            presentation: 'modal',
+            animation: 'slide_from_bottom',
           }}
         />
       </Stack.Navigator>

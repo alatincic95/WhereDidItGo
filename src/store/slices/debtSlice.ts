@@ -23,13 +23,15 @@ export const createDebtSlice: StateCreator<StoreState, [], [], DebtSlice> = (set
   debtExtraPayment: 0,
   debtStrategy: 'avalanche',
 
-  addDebt: (debt) =>
+  addDebt: (debt) => {
+    const now = new Date().toISOString();
     set((state) => ({
       debts: [
-        { ...debt, id: uuidv4(), createdAt: new Date().toISOString() },
+        { ...debt, id: uuidv4(), createdAt: now, updatedAt: now },
         ...state.debts,
       ],
-    })),
+    }));
+  },
 
   addDebtWithId: (debt) =>
     set((state) => ({
@@ -38,7 +40,7 @@ export const createDebtSlice: StateCreator<StoreState, [], [], DebtSlice> = (set
 
   updateDebt: (id, updates) =>
     set((state) => ({
-      debts: state.debts.map((d) => (d.id === id ? { ...d, ...updates } : d)),
+      debts: state.debts.map((d) => (d.id === id ? { ...d, ...updates, updatedAt: new Date().toISOString() } : d)),
     })),
 
   deleteDebt: (id) =>
