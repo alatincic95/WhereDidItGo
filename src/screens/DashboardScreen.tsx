@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -6,7 +6,6 @@ import {
   ScrollView,
   TouchableOpacity,
   Animated,
-  Alert,
   useWindowDimensions,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -22,8 +21,6 @@ import { generateSpendingInsights } from '../utils/spendingInsights';
 import { GlassCard } from '../components/GlassCard';
 import {
   HeroBalanceCard,
-  ViewModeToggle,
-  SummaryCards,
   BudgetUsageCard,
   TopCategoriesCard,
   QuickActionsRow,
@@ -42,6 +39,7 @@ import {
   COMPACT_BREAKPOINT,
 } from '../components/dashboard';
 import type { ViewMode } from '../components/dashboard';
+import { calculateSafeToSpend } from '../utils/safeToSpend';
 
 export const DashboardScreen: React.FC = () => {
   const navigation = useNavigation<any>();
@@ -93,6 +91,7 @@ export const DashboardScreen: React.FC = () => {
     selectedAccountId,
     cryptoHoldings,
     getCryptoPortfolioValue,
+    useRecurringAsMonthlyIncome,
   } = useExpenseStore();
 
   const { getUnreadCount, generateSmartNotifications } = useNotificationStore();
@@ -205,6 +204,15 @@ export const DashboardScreen: React.FC = () => {
   ];
   const isCardVisible = (id: DashboardCardId) => orderedCards.find((c) => c.id === id)?.visible !== false;
 
+  // Safe to spend for hero card
+  const safeToSpend = useMemo(
+    () => calculateSafeToSpend(
+      monthlyIncome, fixedIncomeTotal, extraIncome,
+      totalSpentThisMonth, fixedTotal, useRecurringAsMonthlyIncome,
+    ),
+    [monthlyIncome, fixedIncomeTotal, extraIncome, totalSpentThisMonth, fixedTotal, useRecurringAsMonthlyIncome],
+  );
+
   // Hero values based on mode
   const heroLabel = viewMode === 'monthly' ? getCurrentMonthName() : 'Overall Balance';
   const heroBalance = viewMode === 'monthly' ? monthlyBalance : overallBalance;
@@ -221,8 +229,7 @@ export const DashboardScreen: React.FC = () => {
         >
           <AccountAvatar onPress={() => setAccountSwitcherOpen(true)} />
           <View style={{ flex: 1 }}>
-            <Text style={[styles.greeting, { color: colors.textMuted }]}>Good {getGreeting()}</Text>
-            <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Your Finances</Text>
+            <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Accounts</Text>
           </View>
           {!isCompact && (
             <>
@@ -275,30 +282,25 @@ export const DashboardScreen: React.FC = () => {
           )}
         </Animated.View>
 
-        {/* View Mode Toggle */}
-        <Animated.View
-          style={[styles.toggleContainer, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}
-        >
-          <ViewModeToggle viewMode={viewMode} setViewMode={setViewMode} />
-        </Animated.View>
-
-        {/* Hero Balance Card */}
+        {/* Hero Balance Card — tap to toggle monthly/overall */}
         <Animated.View style={{ opacity: fadeAnim, transform: [{ scale: scaleAnim }] }}>
           <HeroBalanceCard
             viewMode={viewMode}
+            onToggleViewMode={() => setViewMode(viewMode === 'monthly' ? 'overall' : 'monthly')}
             heroLabel={heroLabel}
             heroBalance={heroBalance}
+            totalIncomeThisMonth={totalIncomeThisMonth}
             totalSpentThisMonth={totalSpentThisMonth}
             trackedMonths={trackedMonths}
+            safeToSpendDaily={safeToSpend.daily}
+            daysLeft={safeToSpend.daysLeft}
             formatCurrency={formatCurrency}
           />
         </Animated.View>
 
-        {/* Safe to Spend + Age of Money */}
+        {/* Safe to Spend */}
         {viewMode === 'monthly' && (
-          <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
-            <SafeToSpendCard currentMonth={currentMonth} />
-          </Animated.View>
+          <SafeToSpendCard currentMonth={currentMonth} />
         )}
 
         {/* Quick Add Bar */}
@@ -356,54 +358,22 @@ export const DashboardScreen: React.FC = () => {
           const animIdx = Math.min(idx, cardSlides.length - 1);
           switch (card.id) {
             case 'summary':
+              // Income/Expenses summary folded into HeroBalanceCard
+              if (cryptoHoldings.length === 0) return null;
               return (
-                <React.Fragment key="summary">
-                <Animated.View
-                  style={[styles.monthlyRow, { opacity: cardFades[animIdx], transform: [{ translateY: cardSlides[animIdx] }] }]}
-                >
-                  <SummaryCards
-                    viewMode={viewMode}
-                    totalIncomeThisMonth={totalIncomeThisMonth}
-                    extraIncome={extraIncome}
-                    totalSpentThisMonth={totalSpentThisMonth}
-                    initialBalance={initialBalance}
-                    totalAllTime={totalAllTime}
+                <Animated.View key="summary" style={{ opacity: cardFades[animIdx], transform: [{ translateY: cardSlides[animIdx] }], marginBottom: SPACING.md }}>
+                  <CryptoSummaryCard
+                    portfolioValue={getCryptoPortfolioValue()}
+                    holdingsCount={cryptoHoldings.length}
                     formatCurrency={formatCurrency}
-                    onEditIncome={() => {
-                      setIncomeInput(monthlyIncome.toString());
-                      setEditingIncome(true);
-                    }}
-                    onEditInitialBalance={() => {
-                      Alert.prompt?.(
-                        'Starting Balance',
-                        'Enter your initial balance before tracking',
-                        (text) => {
-                          const val = parseFloat(text);
-                          if (!isNaN(val)) setInitialBalance(val);
-                        },
-                        'plain-text',
-                        initialBalance.toString()
-                      ) ??
-                        Alert.alert('Starting Balance', `Current: ${formatCurrency(initialBalance)}`);
-                    }}
+                    onPress={() => navigation.navigate('Crypto')}
                   />
                 </Animated.View>
-                {cryptoHoldings.length > 0 && (
-                  <View style={{ marginBottom: SPACING.lg }}>
-                    <CryptoSummaryCard
-                      portfolioValue={getCryptoPortfolioValue()}
-                      holdingsCount={cryptoHoldings.length}
-                      formatCurrency={formatCurrency}
-                      onPress={() => navigation.navigate('Crypto')}
-                    />
-                  </View>
-                )}
-              </React.Fragment>
               );
             case 'budgetUsage':
               if (viewMode !== 'monthly' || totalIncomeThisMonth <= 0) return null;
               return (
-                <Animated.View key="budgetUsage" style={{ opacity: cardFades[animIdx], transform: [{ translateY: cardSlides[animIdx] }] }}>
+                <Animated.View key="budgetUsage" style={{ opacity: cardFades[animIdx], transform: [{ translateY: cardSlides[animIdx] }], marginBottom: SPACING.md }}>
                   <BudgetUsageCard
                     spendingPercentage={spendingPercentage}
                     monthlyBalance={monthlyBalance}
@@ -414,7 +384,7 @@ export const DashboardScreen: React.FC = () => {
               );
             case 'categories':
               return (
-                <Animated.View key="categories" style={{ opacity: cardFades[animIdx], transform: [{ translateY: cardSlides[animIdx] }] }}>
+                <Animated.View key="categories" style={{ opacity: cardFades[animIdx], transform: [{ translateY: cardSlides[animIdx] }], marginBottom: SPACING.md }}>
                   <TopCategoriesCard
                     sortedCategories={sortedCategories}
                     customCategories={customCategories}
@@ -429,7 +399,7 @@ export const DashboardScreen: React.FC = () => {
               return null;
             case 'recentTransactions':
               return (
-                <Animated.View key="recentTransactions" style={{ opacity: cardFades[animIdx], transform: [{ translateY: cardSlides[animIdx] }] }}>
+                <Animated.View key="recentTransactions" style={{ opacity: cardFades[animIdx], transform: [{ translateY: cardSlides[animIdx] }], marginBottom: SPACING.md }}>
                   <RecentTransactions
                     recentTransactions={recentTransactions}
                     navigation={navigation}
@@ -508,10 +478,9 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   headerTitle: {
-    fontSize: FONT_SIZE.xxl,
+    fontSize: FONT_SIZE.lg,
     color: COLORS.textPrimary,
-    fontWeight: '800',
-    marginTop: 4,
+    fontWeight: '700',
     letterSpacing: -0.5,
   },
   headerBtn: {
@@ -547,14 +516,6 @@ const styles = StyleSheet.create({
     fontSize: 9,
     color: '#FFF',
     fontWeight: '800',
-  },
-  toggleContainer: {
-    marginBottom: SPACING.lg,
-  },
-  monthlyRow: {
-    flexDirection: 'row',
-    gap: SPACING.md,
-    marginBottom: SPACING.lg,
   },
   quickActionsRow: {
     marginBottom: SPACING.lg,

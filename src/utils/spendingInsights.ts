@@ -25,12 +25,16 @@ export function generateSpendingInsights(
   const prevDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
   const prevMonth = `${prevDate.getFullYear()}-${String(prevDate.getMonth() + 1).padStart(2, '0')}`;
 
-  const nonFixed = expenses.filter((e) => !e.isFixed);
-  const currentExpenses = nonFixed.filter((e) => e.date.substring(0, 7) === currentMonth);
-  const prevExpenses = nonFixed.filter((e) => e.date.substring(0, 7) === prevMonth);
+  const currentExpenses = expenses.filter((e) => e.date.substring(0, 7) === currentMonth);
+  const prevExpenses = expenses.filter((e) => e.date.substring(0, 7) === prevMonth);
 
-  const currentTotal = currentExpenses.reduce((s, e) => s + e.amount, 0);
-  const prevTotal = prevExpenses.reduce((s, e) => s + e.amount, 0);
+  // Include active recurring expenses (monthly equivalent)
+  const recurringMonthly = fixedExpenses
+    .filter((e) => !e.paused)
+    .reduce((s, e) => s + e.amount * FREQUENCY_TO_MONTHLY[e.frequency || 'monthly'], 0);
+
+  const currentTotal = currentExpenses.reduce((s, e) => s + e.amount, 0) + recurringMonthly;
+  const prevTotal = prevExpenses.reduce((s, e) => s + e.amount, 0) + recurringMonthly;
 
   // Monthly recap comparison
   if (prevTotal > 0) {
@@ -77,16 +81,13 @@ export function generateSpendingInsights(
   const dayOfMonth = now.getDate();
   const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
   const projectedTotal = (currentTotal / dayOfMonth) * daysInMonth;
-  const fixedTotal = fixedExpenses.filter((e) => !e.paused).reduce((s, e) => {
-    return s + e.amount * FREQUENCY_TO_MONTHLY[e.frequency || 'monthly'];
-  }, 0);
 
-  if (monthlyIncome > 0 && projectedTotal + fixedTotal > monthlyIncome && dayOfMonth >= 7) {
+  if (monthlyIncome > 0 && projectedTotal > monthlyIncome && dayOfMonth >= 7) {
     insights.push({
       id: 'trend-overspend',
       type: 'trend',
       title: 'Spending Pace Warning',
-      message: `At your current pace, you'll spend ~${currencySymbol}${(projectedTotal + fixedTotal).toFixed(0)} this month, which exceeds your ${currencySymbol}${monthlyIncome.toFixed(0)} income.`,
+      message: `At your current pace, you'll spend ~${currencySymbol}${projectedTotal.toFixed(0)} this month, which exceeds your ${currencySymbol}${monthlyIncome.toFixed(0)} income.`,
       icon: 'speed',
       color: '#FF6B9D',
     });

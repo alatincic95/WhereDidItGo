@@ -282,7 +282,7 @@ export const SavingsGoalsScreen: React.FC = () => {
         <TouchableOpacity style={[styles.backBtn, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={() => navigation.goBack()}>
           <MaterialIcons name="arrow-back" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Savings Goals</Text>
+        <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Savings</Text>
         <TouchableOpacity style={styles.addBtn} onPress={() => openModal()}>
           <LinearGradient colors={['#6C63FF', '#BB8FCE']} style={styles.addBtnGradient}>
             <MaterialIcons name="add" size={20} color="#FFF" />
@@ -643,9 +643,9 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   summaryCount: {
-    fontSize: FONT_SIZE.xl,
+    fontSize: FONT_SIZE.md,
     color: COLORS.textPrimary,
-    fontWeight: '800',
+    fontWeight: '700',
   },
   summaryDivider: {
     width: 1,

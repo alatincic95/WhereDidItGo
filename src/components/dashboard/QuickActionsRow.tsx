@@ -20,7 +20,7 @@ export const QuickActionsRow: React.FC<QuickActionsRowProps> = ({ navigation }) 
 
   const actions: QuickAction[] = [
     { label: 'Trends', icon: 'trending-up', color: colors.primary, screen: 'Trends' },
-    { label: 'Goals', icon: 'savings', color: colors.success, screen: 'SavingsGoals' },
+    { label: 'Savings', icon: 'savings', color: colors.success, screen: 'SavingsGoals' },
     { label: 'Net Worth', icon: 'assessment', color: '#45B7D1', screen: 'NetWorth' },
     { label: 'Crypto', icon: 'currency-bitcoin', color: '#F7931A', screen: 'Crypto' },
     { label: 'Debt', icon: 'credit-score', color: colors.danger, screen: 'DebtPayoff' },
